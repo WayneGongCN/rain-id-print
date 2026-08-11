@@ -16,6 +16,7 @@ import { createH5Platform, type BackgroundProgress, type H5ImageAsset } from '@r
 import alipayRewardCode from './assets/alipay-reward-code.jpg'
 import wechatRewardCode from './assets/wechat-reward-code.jpg'
 import { SeoDetails, SeoIntro } from './SeoContent'
+import { trackAnalyticsEvent } from './analytics'
 
 interface AppPhoto extends H5ImageAsset {
   sizeSpecId: string
@@ -157,8 +158,14 @@ export function App() {
     if (event.target === event.currentTarget) closeRewardDialog()
   }
 
+  /** 打开赞赏浮层并记录入口使用情况，喵~ */
+  function openRewardDialog(): void {
+    setIsRewardOpen(true)
+    trackAnalyticsEvent('reward_dialog_open', {})
+  }
+
   /** 导入用户选择的图片并初始化照片配置，喵~ */
-  async function importFiles(files: Iterable<File>): Promise<void> {
+  async function importFiles(files: Iterable<File>, inputMethod: 'picker' | 'drop'): Promise<void> {
     setMessage('')
     setIsImporting(true)
     try {
@@ -175,8 +182,16 @@ export function App() {
           professionalOpen: false,
         })),
       ])
-      if (assets.length > 1 || photos.length > 0) setMode('mixed')
+      trackAnalyticsEvent('photo_import', {
+        input_method: inputMethod,
+        photo_count: assets.length,
+      })
+      if ((assets.length > 1 || photos.length > 0) && mode !== 'mixed') {
+        setMode('mixed')
+        trackAnalyticsEvent('layout_mode_change', { layout_mode: 'mixed' })
+      }
     } catch (error) {
+      trackAnalyticsEvent('photo_import_error', { input_method: inputMethod })
       setMessage(error instanceof Error ? error.message : '图片导入失败')
     } finally {
       setIsImporting(false)
@@ -186,7 +201,7 @@ export function App() {
   /** 响应文件选择框变化并清空其值以允许重复选择同名文件，喵~ */
   function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
     const files = event.target.files
-    if (files) void importFiles(files)
+    if (files) void importFiles(files, 'picker')
     event.target.value = ''
   }
 
@@ -194,7 +209,14 @@ export function App() {
   function handleDrop(event: DragEvent<HTMLButtonElement>): void {
     event.preventDefault()
     setIsDragging(false)
-    void importFiles(event.dataTransfer.files)
+    void importFiles(event.dataTransfer.files, 'drop')
+  }
+
+  /** 仅在排版模式实际变化时更新状态并发送分析事件，喵~ */
+  function changeLayoutMode(layoutMode: UploadMode): void {
+    if (layoutMode === mode) return
+    setMode(layoutMode)
+    trackAnalyticsEvent('layout_mode_change', { layout_mode: layoutMode })
   }
 
   /** 更新一张照片的尺寸或份数等可编辑字段，喵~ */
@@ -222,9 +244,12 @@ export function App() {
 
   /** 切换照片底色，非原图模式会先完成一次本地智能抠图，喵~ */
   async function changeBackground(photoId: string, background: BackgroundMode): Promise<void> {
+    const photo = photos.find((item) => item.id === photoId)
+    if (!photo || photo.background === background) return
     setMessage('')
     if (background === 'keep') {
       updatePhoto(photoId, { background, processingText: undefined })
+      trackAnalyticsEvent('background_change', { background_mode: background })
       return
     }
 
@@ -234,8 +259,10 @@ export function App() {
         updatePhoto(photoId, { processingText: formatProgress(progress) })
       })
       updatePhoto(photoId, { background, processingText: undefined })
+      trackAnalyticsEvent('background_change', { background_mode: background })
     } catch (error) {
       updatePhoto(photoId, { processingText: undefined })
+      trackAnalyticsEvent('background_change_error', { background_mode: background })
       setMessage(error instanceof Error ? `智能换底失败：${error.message}` : '智能换底失败')
     }
   }
@@ -253,7 +280,17 @@ export function App() {
       })
       const paper = getPaperSpec(paperSpecId)
       platform.download(blob, `rainnear_${layout.placedCount}张_${paper?.name ?? '照片纸'}_300dpi.jpg`)
+      trackAnalyticsEvent('photo_export', {
+        layout_mode: mode,
+        paper_spec_id: paperSpecId,
+        placed_count: layout.placedCount,
+      })
     } catch (error) {
+      trackAnalyticsEvent('photo_export_error', {
+        layout_mode: mode,
+        paper_spec_id: paperSpecId,
+        placed_count: layout.placedCount,
+      })
       setMessage(error instanceof Error ? error.message : '照片导出失败')
     } finally {
       setIsExporting(false)
@@ -275,7 +312,7 @@ export function App() {
             type="button"
             aria-haspopup="dialog"
             aria-expanded={isRewardOpen}
-            onClick={() => setIsRewardOpen(true)}
+            onClick={openRewardDialog}
           >
             赞赏
           </button>
@@ -346,8 +383,8 @@ export function App() {
 
             {photos.length > 0 && (
               <div className="mode-tabs" role="tablist" aria-label="排版模式">
-                <button type="button" role="tab" aria-selected={mode === 'single'} className={mode === 'single' ? 'active' : ''} onClick={() => setMode('single')}>单照片</button>
-                <button type="button" role="tab" aria-selected={mode === 'mixed'} className={mode === 'mixed' ? 'active' : ''} onClick={() => setMode('mixed')}>混合排版</button>
+                <button type="button" role="tab" aria-selected={mode === 'single'} className={mode === 'single' ? 'active' : ''} onClick={() => changeLayoutMode('single')}>单照片</button>
+                <button type="button" role="tab" aria-selected={mode === 'mixed'} className={mode === 'mixed' ? 'active' : ''} onClick={() => changeLayoutMode('mixed')}>混合排版</button>
               </div>
             )}
 
@@ -495,7 +532,10 @@ export function App() {
         <SeoDetails />
       </main>
 
-      <footer><span>雨邻证照 · Rainnear Photo</span><span>所有图像处理均在你的浏览器中完成</span></footer>
+      <footer>
+        <span>雨邻证照 · Rainnear Photo</span>
+        <span>照片始终仅在浏览器本地处理；页面访问与功能使用数据会发送至 <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google Analytics</a></span>
+      </footer>
     </div>
   )
 }

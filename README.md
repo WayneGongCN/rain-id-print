@@ -53,3 +53,15 @@ pnpm build
 - 生产域名：<https://idprint.rainnear.com>
 - Vercel 构建命令：`pnpm build:h5`
 - Vercel 输出目录：`packages/app-h5/dist`
+
+### Google Analytics 4
+
+H5 应用通过官方 Google tag 采集页面访问和核心功能漏斗，只有生产构建运行在 `idprint.rainnear.com` 且配置了合法 Measurement ID 时才会启用。本地开发、Vercel Preview、测试环境和缺少配置的构建都不会发送数据。
+
+在 Vercel 项目的 Production 环境中添加以下变量并重新部署：
+
+```text
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+该 Measurement ID 会随 Vite 构建产物公开，不应将任何密钥或私密凭据放入 `VITE_*` 变量。完整事件字典、隐私边界、GA4 后台配置和验证流程见 [`docs/google-analytics-integration-2026-08-11.md`](./docs/google-analytics-integration-2026-08-11.md)。
