@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type MouseEvent } from 'react'
 import {
   DEFAULT_BACKGROUND_TUNING,
   PAPER_SPECS,
@@ -13,6 +13,8 @@ import {
   type PhotoLayoutInput,
 } from '@rainnear/core'
 import { createH5Platform, type BackgroundProgress, type H5ImageAsset } from '@rainnear/plateform-h5'
+import alipayRewardCode from './assets/alipay-reward-code.jpg'
+import wechatRewardCode from './assets/wechat-reward-code.jpg'
 
 interface AppPhoto extends H5ImageAsset {
   sizeSpecId: string
@@ -60,6 +62,8 @@ export function App() {
   const platform = useMemo(() => createH5Platform(), [])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const rewardButtonRef = useRef<HTMLButtonElement>(null)
+  const rewardCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [photos, setPhotos] = useState<AppPhoto[]>([])
   const [mode, setMode] = useState<UploadMode>('single')
   const [paperSpecId, setPaperSpecId] = useState('6r')
@@ -70,6 +74,7 @@ export function App() {
   const [isDragging, setIsDragging] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isRewardOpen, setIsRewardOpen] = useState(false)
   const [message, setMessage] = useState('')
 
   const layout = useMemo<LayoutPlan | null>(() => {
@@ -113,6 +118,43 @@ export function App() {
 
   // 页面卸载时释放所有 Object URL 和模型结果，避免长时间占用内存，喵~
   useEffect(() => () => platform.dispose(), [platform])
+
+  // 赞赏浮层打开时锁定页面滚动，并将键盘焦点限制在关闭按钮上，喵~
+  useEffect(() => {
+    if (!isRewardOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    rewardCloseButtonRef.current?.focus()
+
+    function handleDialogKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsRewardOpen(false)
+        window.requestAnimationFrame(() => rewardButtonRef.current?.focus())
+      }
+      if (event.key === 'Tab') {
+        event.preventDefault()
+        rewardCloseButtonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleDialogKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleDialogKeyDown)
+    }
+  }, [isRewardOpen])
+
+  /** 关闭赞赏浮层并将焦点还给导航栏入口，喵~ */
+  function closeRewardDialog(): void {
+    setIsRewardOpen(false)
+    window.requestAnimationFrame(() => rewardButtonRef.current?.focus())
+  }
+
+  /** 仅当用户点击遮罩本身时关闭赞赏浮层，喵~ */
+  function handleRewardBackdropClick(event: MouseEvent<HTMLDivElement>): void {
+    if (event.target === event.currentTarget) closeRewardDialog()
+  }
 
   /** 导入用户选择的图片并初始化照片配置，喵~ */
   async function importFiles(files: Iterable<File>): Promise<void> {
@@ -224,8 +266,61 @@ export function App() {
           <span className="brand-mark">R</span>
           <span><strong>雨邻证照</strong><small>RAINNEAR PHOTO</small></span>
         </a>
-        <div className="privacy-pill"><span>●</span> 照片仅在本地处理</div>
+        <div className="topbar-actions">
+          <div className="privacy-pill"><span>●</span><span className="privacy-text">照片仅在本地处理</span></div>
+          <button
+            ref={rewardButtonRef}
+            className="reward-trigger"
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={isRewardOpen}
+            onClick={() => setIsRewardOpen(true)}
+          >
+            赞赏
+          </button>
+        </div>
       </header>
+
+      {isRewardOpen && (
+        <div className="reward-backdrop" onMouseDown={handleRewardBackdropClick}>
+          <section
+            className="reward-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reward-dialog-title"
+            aria-describedby="reward-dialog-description"
+          >
+            <button
+              ref={rewardCloseButtonRef}
+              className="reward-close"
+              type="button"
+              aria-label="关闭赞赏浮层"
+              onClick={closeRewardDialog}
+            >
+              ×
+            </button>
+            <div className="reward-heading">
+              <span>THANK YOU</span>
+              <h2 id="reward-dialog-title">感谢支持</h2>
+              <p id="reward-dialog-description">选择微信或支付宝扫码赞赏</p>
+            </div>
+            <div className="reward-code-grid">
+              <figure className="reward-code-card">
+                <figcaption><i className="wechat-dot" />微信赞赏码</figcaption>
+                <div className="reward-code-frame wechat-code-frame">
+                  <img src={wechatRewardCode} alt="微信赞赏码" />
+                </div>
+              </figure>
+              <figure className="reward-code-card">
+                <figcaption><i className="alipay-dot" />支付宝收款码</figcaption>
+                <div className="reward-code-frame alipay-code-frame">
+                  <img src={alipayRewardCode} alt="支付宝收款码" />
+                </div>
+              </figure>
+            </div>
+          </section>
+        </div>
+      )}
 
       <main id="top" className="workspace">
         <section className="intro-panel">

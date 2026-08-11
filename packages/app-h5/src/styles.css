@@ -19,8 +19,30 @@ button { cursor: pointer; }
 .brand strong, .brand small { display: block; }
 .brand strong { font-size: 17px; letter-spacing: .08em; }
 .brand small { margin-top: 2px; font-size: 8px; letter-spacing: .2em; color: #8c91a2; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
 .privacy-pill { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid #dfddef; border-radius: 99px; color: #696d7f; font-size: 12px; background: #fff; }
 .privacy-pill span { color: #4ec78b; font-size: 10px; }
+.privacy-pill .privacy-text { color: inherit; font-size: inherit; }
+.reward-trigger { border: 1px solid #ddd8ff; border-radius: 99px; padding: 9px 16px; color: #6252df; background: #f5f3ff; font-size: 12px; font-weight: 700; transition: .2s ease; }
+.reward-trigger:hover { border-color: #bdb4ff; background: #ece9ff; transform: translateY(-1px); }
+.reward-trigger:focus-visible, .reward-close:focus-visible { outline: 3px solid rgba(105,89,237,.24); outline-offset: 2px; }
+
+.reward-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: rgba(25,23,42,.52); backdrop-filter: blur(8px); }
+.reward-dialog { position: relative; width: min(900px, 100%); max-height: calc(100vh - 48px); overflow: auto; border: 1px solid rgba(255,255,255,.65); border-radius: 24px; padding: 34px; background: linear-gradient(155deg, #fff, #f8f7ff); box-shadow: 0 34px 100px rgba(23,19,54,.32); }
+.reward-close { position: absolute; top: 18px; right: 18px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e2dfef; border-radius: 50%; padding: 0 0 2px; color: #747083; background: #fff; font-size: 23px; line-height: 1; transition: .2s ease; }
+.reward-close:hover { color: #5546d7; border-color: #cfc8ff; background: #f3f1ff; }
+.reward-heading { padding-right: 42px; }
+.reward-heading > span { color: #7161ed; font-size: 9px; font-weight: 800; letter-spacing: .22em; }
+.reward-heading h2 { margin: 7px 0 6px; color: #29263b; font-size: 26px; letter-spacing: -.03em; }
+.reward-heading p { margin: 0; color: #888596; font-size: 12px; }
+.reward-code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 25px; }
+.reward-code-card { min-width: 0; margin: 0; padding: 13px; border: 1px solid #e6e3f0; border-radius: 17px; background: rgba(255,255,255,.82); }
+.reward-code-card figcaption { display: flex; align-items: center; gap: 7px; padding: 1px 2px 11px; color: #4b485a; font-size: 12px; font-weight: 700; }
+.reward-code-card figcaption i { width: 8px; height: 8px; border-radius: 50%; }
+.wechat-dot { background: #20bd68; box-shadow: 0 0 0 4px rgba(32,189,104,.12); }
+.alipay-dot { background: #1677ff; box-shadow: 0 0 0 4px rgba(22,119,255,.12); }
+.reward-code-frame { position: relative; height: min(53vh, 520px); overflow: hidden; border-radius: 11px; background: #fff; }
+.reward-code-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 
 .workspace { width: min(1460px, calc(100% - 44px)); margin: 0 auto; padding: 58px 0 48px; }
 .intro-panel { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(300px, .8fr); align-items: end; margin-bottom: 42px; }
@@ -133,7 +155,22 @@ footer { display: flex; justify-content: space-between; width: min(1460px, calc(
 
 @media (max-width: 600px) {
   .topbar { height: 66px; padding: 0 18px; }
-  .privacy-pill { padding: 7px 9px; font-size: 9px; }
+  .brand { gap: 8px; }
+  .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
+  .brand strong { font-size: 14px; }
+  .brand small { font-size: 7px; }
+  .topbar-actions { gap: 5px; }
+  .privacy-pill { gap: 5px; padding: 7px 8px; font-size: 9px; }
+  .privacy-text { max-width: 45px; overflow: hidden; white-space: nowrap; }
+  .reward-trigger { padding: 7px 9px; font-size: 10px; }
+  .reward-backdrop { align-items: end; padding: 10px; }
+  .reward-dialog { width: 100%; max-height: calc(100vh - 20px); border-radius: 20px; padding: 26px 17px 20px; }
+  .reward-close { top: 14px; right: 14px; }
+  .reward-heading h2 { font-size: 22px; }
+  .reward-code-grid { grid-template-columns: 1fr; gap: 13px; margin-top: 20px; }
+  .reward-code-frame { height: auto; }
+  .wechat-code-frame { aspect-ratio: 1; }
+  .alipay-code-frame { aspect-ratio: 2 / 3; }
   .workspace { width: calc(100% - 24px); padding-top: 35px; }
   .intro-panel h1 { font-size: 41px; }
   .feature-row { flex-wrap: wrap; }
