@@ -1,0 +1,20 @@
+{
+  "name": "rainnear-photo-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev:h5": "pnpm --filter @rainnear/app-h5 dev",
+    "build": "pnpm -r --if-present build",
+    "build:h5": "pnpm --filter @rainnear/app-h5 build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

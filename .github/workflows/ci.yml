@@ -1,0 +1,49 @@
+name: 持续集成
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: 测试、类型检查与构建
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.1
+          run_install: false
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 运行单元测试
+        run: pnpm test
+
+      - name: 运行类型检查
+        run: pnpm typecheck
+
+      - name: 构建全部工作区
+        run: pnpm build
