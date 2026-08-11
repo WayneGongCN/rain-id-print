@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="100" y1="0" x2="1100" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8f7ff"/>
+      <stop offset="1" stop-color="#e9e5ff"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#897cff"/>
+      <stop offset="1" stop-color="#5542df"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1090" cy="70" r="220" fill="#dcd6ff" opacity=".65"/>
+  <circle cx="110" cy="600" r="190" fill="#ffffff" opacity=".8"/>
+  <rect x="76" y="72" width="72" height="72" rx="20" fill="url(#brand)"/>
+  <text x="112" y="124" text-anchor="middle" font-family="Arial,sans-serif" font-size="42" font-weight="800" fill="#fff">R</text>
+  <text x="170" y="105" font-family="Arial,'Noto Sans SC',sans-serif" font-size="34" font-weight="750" fill="#252238">雨邻证照</text>
+  <text x="170" y="137" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="4" fill="#77718b">RAINNEAR PHOTO</text>
+  <text x="76" y="286" font-family="Arial,'Noto Sans SC',sans-serif" font-size="64" font-weight="800" fill="#232036">免费在线证件照排版</text>
+  <text x="76" y="370" font-family="Arial,'Noto Sans SC',sans-serif" font-size="64" font-weight="800" fill="#6654ea">照片不上传，隐私留在本地</text>
+  <text x="80" y="442" font-family="Arial,'Noto Sans SC',sans-serif" font-size="28" fill="#666176">智能换底 · 多尺寸混排 · 6 寸 / A4 · 300 DPI 导出</text>
+  <rect x="78" y="495" width="278" height="60" rx="30" fill="url(#brand)"/>
+  <text x="217" y="534" text-anchor="middle" font-family="Arial,'Noto Sans SC',sans-serif" font-size="23" font-weight="700" fill="#fff">idprint.rainnear.com</text>
+  <g transform="translate(905 178) rotate(5)">
+    <rect width="210" height="286" rx="20" fill="#fff" stroke="#d8d3ed" stroke-width="3"/>
+    <rect x="25" y="24" width="160" height="196" rx="12" fill="#dfeaff"/>
+    <circle cx="105" cy="90" r="41" fill="#f0c9b0"/>
+    <path d="M57 200c4-55 29-78 48-78s44 23 48 78" fill="#4c5480"/>
+    <path d="M69 86c2-39 19-57 40-57 24 0 39 22 37 63-16-13-46-20-77-6Z" fill="#312f42"/>
+    <rect x="31" y="240" width="92" height="14" rx="7" fill="#6b5af0" opacity=".24"/>
+    <rect x="31" y="262" width="145" height="8" rx="4" fill="#d8d5e8"/>
+  </g>
+</svg>

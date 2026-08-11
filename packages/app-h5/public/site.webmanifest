@@ -1,0 +1,23 @@
+{
+  "name": "雨邻证照 · Rainnear Photo",
+  "short_name": "雨邻证照",
+  "description": "照片不上传的免费在线证件照排版与换底工具",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f6fb",
+  "theme_color": "#6d5dfc",
+  "icons": [
+    {
+      "src": "/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

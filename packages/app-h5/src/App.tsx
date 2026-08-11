@@ -15,6 +15,7 @@ import {
 import { createH5Platform, type BackgroundProgress, type H5ImageAsset } from '@rainnear/plateform-h5'
 import alipayRewardCode from './assets/alipay-reward-code.jpg'
 import wechatRewardCode from './assets/wechat-reward-code.jpg'
+import { SeoDetails, SeoIntro } from './SeoContent'
 
 interface AppPhoto extends H5ImageAsset {
   sizeSpecId: string
@@ -262,12 +263,12 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="雨邻证照首页">
+        <a className="brand" href="#top">
           <span className="brand-mark">R</span>
           <span><strong>雨邻证照</strong><small>RAINNEAR PHOTO</small></span>
         </a>
         <div className="topbar-actions">
-          <div className="privacy-pill"><span>●</span><span className="privacy-text">照片仅在本地处理</span></div>
+          <a className="privacy-pill" href="#privacy"><span aria-hidden="true">●</span><span className="privacy-text">照片仅在本地处理</span></a>
           <button
             ref={rewardButtonRef}
             className="reward-trigger"
@@ -323,16 +324,9 @@ export function App() {
       )}
 
       <main id="top" className="workspace">
-        <section className="intro-panel">
-          <div className="eyebrow">PRINT-READY · 300 DPI</div>
-          <h1>把证件照，<br /><em>排得刚刚好。</em></h1>
-          <p>智能换底、多尺寸混排、冲印级导出。无需上传服务器，隐私留在你的设备。</p>
-          <div className="feature-row">
-            <span>本地智能抠图</span><span>毫米级排版</span><span>多照片混排</span>
-          </div>
-        </section>
+        <SeoIntro />
 
-        <section className="editor-grid">
+        <section id="editor" className="editor-grid" aria-label="证件照排版编辑器">
           <aside className="control-panel">
             <div className="panel-heading"><span>01</span><div><h2>照片与规格</h2><p>添加照片并设置冲印尺寸</p></div></div>
 
@@ -344,16 +338,16 @@ export function App() {
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
             >
-              <input ref={fileInputRef} hidden type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
               <span className="upload-icon">＋</span>
               <strong>{isImporting ? '正在读取照片…' : '添加本地照片'}</strong>
               <small>点击选择或拖拽到这里 · 单张不超过 8MB</small>
             </button>
+            <input ref={fileInputRef} hidden type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
 
             {photos.length > 0 && (
               <div className="mode-tabs" role="tablist" aria-label="排版模式">
-                <button className={mode === 'single' ? 'active' : ''} onClick={() => setMode('single')}>单照片</button>
-                <button className={mode === 'mixed' ? 'active' : ''} onClick={() => setMode('mixed')}>混合排版</button>
+                <button type="button" role="tab" aria-selected={mode === 'single'} className={mode === 'single' ? 'active' : ''} onClick={() => setMode('single')}>单照片</button>
+                <button type="button" role="tab" aria-selected={mode === 'mixed'} className={mode === 'mixed' ? 'active' : ''} onClick={() => setMode('mixed')}>混合排版</button>
               </div>
             )}
 
@@ -374,9 +368,11 @@ export function App() {
                       {BACKGROUND_OPTIONS.map((option) => (
                         <button
                           key={option.value}
+                          type="button"
                           className={photo.background === option.value ? 'selected' : ''}
                           onClick={() => void changeBackground(photo.id, option.value)}
-                          title={option.label}
+                          aria-label={`设置${option.label}底色`}
+                          aria-pressed={photo.background === option.value}
                           disabled={Boolean(photo.processingText)}
                         >
                           {option.color ? <i style={{ background: option.color }} /> : '原'}
@@ -400,7 +396,6 @@ export function App() {
                             <label>
                               <span>边缘收缩 / 扩张 <b>{photo.tuning.edgeShiftPx > 0 ? '+' : ''}{photo.tuning.edgeShiftPx} px</b></span>
                               <input
-                                aria-label={`${photo.name} 边缘收缩扩张`}
                                 type="range"
                                 min="-8"
                                 max="8"
@@ -412,7 +407,6 @@ export function App() {
                             <label>
                               <span>边缘硬度 <b>{photo.tuning.edgeHardness}%</b></span>
                               <input
-                                aria-label={`${photo.name} 边缘硬度`}
                                 type="range"
                                 min="0"
                                 max="100"
@@ -424,7 +418,6 @@ export function App() {
                             <label>
                               <span>羽化 <b>{photo.tuning.featherPx.toFixed(1)} px</b></span>
                               <input
-                                aria-label={`${photo.name} 羽化`}
                                 type="range"
                                 min="0"
                                 max="8"
@@ -436,7 +429,6 @@ export function App() {
                             <label>
                               <span>去色溢出 <b>{photo.tuning.decontaminate}%</b></span>
                               <input
-                                aria-label={`${photo.name} 去色溢出`}
                                 type="range"
                                 min="0"
                                 max="100"
@@ -500,9 +492,10 @@ export function App() {
             <p className="export-note">导出时才生成高分辨率图片，预览不会消耗大量内存</p>
           </section>
         </section>
+        <SeoDetails />
       </main>
 
-      <footer><span>Rainnear Photo · TypeScript Monorepo MVP</span><span>所有图像处理均在你的浏览器中完成</span></footer>
+      <footer><span>雨邻证照 · Rainnear Photo</span><span>所有图像处理均在你的浏览器中完成</span></footer>
     </div>
   )
 }
