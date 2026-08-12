@@ -15,7 +15,7 @@
 2. `.github/workflows/ci.yml` 执行单元测试、类型检查和全量构建。
 3. 质量门禁通过后，通过 Vercel CLI 上传源码，由 Vercel 使用 Preview 环境变量构建并部署 Preview。
 4. 部署携带 `main` 分支和提交 SHA 元数据，便于在 Vercel 中识别和追踪。
-5. 部署成功后，将固定测试域名 `rain-id-print-test.vercel.app` 指向最新的 Preview Deployment。
+5. 部署成功后，通过 Vercel Alias API 将固定测试域名 `rain-id-print-test.vercel.app` 指向最新的 Preview Deployment。
 
 ### 生产环境
 

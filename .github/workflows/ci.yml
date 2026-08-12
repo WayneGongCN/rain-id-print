@@ -57,6 +57,7 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TELEMETRY_DISABLED: '1'
       VITE_TELEMETRY_ENABLED: 'false'
     steps:
@@ -70,7 +71,7 @@ jobs:
         id: deploy
         run: |
           deployment_url="$(vercel deploy --yes \
-            --token="${{ secrets.VERCEL_TOKEN }}" \
+            --token="$VERCEL_TOKEN" \
             --meta githubDeployment=1 \
             --meta githubCommitRef="${{ github.ref_name }}" \
             --meta githubCommitSha="${{ github.sha }}" \
@@ -79,8 +80,12 @@ jobs:
           echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
 
       - name: 更新固定测试域名
-        run: >-
-          vercel alias set
-          "${{ steps.deploy.outputs.url }}"
-          rain-id-print-test.vercel.app
-          --token="${{ secrets.VERCEL_TOKEN }}"
+        run: |
+          deployment_host="${{ steps.deploy.outputs.url }}"
+          deployment_host="${deployment_host#https://}"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data '{"alias":"rain-id-print-test.vercel.app"}' \
+            "https://api.vercel.com/v2/deployments/${deployment_host}/aliases?teamId=${VERCEL_ORG_ID}"
