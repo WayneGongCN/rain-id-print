@@ -11,6 +11,7 @@ import {
   type BackgroundTuning,
   type LayoutPlan,
   type PhotoLayoutInput,
+  type PhotoSpecGroup,
 } from '@rainnear/core'
 import {
   createH5Platform,
@@ -23,11 +24,22 @@ import buyMeACoffeeRewardCode from './assets/buy-me-a-coffee-reward-code.png'
 import wechatRewardCode from './assets/wechat-reward-code.jpg'
 import { readBackgroundModelPreference, writeBackgroundModelPreference } from './background-model-preference'
 import { prepareBackgroundModelForAssets } from './background-model-switch'
+import {
+  DEFAULT_EXPORT_DPI,
+  MAX_EXPORT_DPI,
+  MAX_H5_EXPORT_PIXELS,
+  MIN_EXPORT_DPI,
+  getDpiRecommendationWarning,
+  getExportPixelWarning,
+  getRecommendedExportDpi,
+  parseExportDpi,
+  raiseExportDpi,
+} from './export-settings'
 import { SeoDetails, SeoIntro } from './SeoContent'
 import { trackAnalyticsEvent } from './analytics'
 
 interface AppPhoto extends H5ImageAsset {
-  sizeSpecId: string
+  presetId: string
   copies: number
   background: BackgroundMode
   tuning: BackgroundTuning
@@ -52,9 +64,15 @@ const BACKGROUND_OPTIONS: Array<{ value: BackgroundMode; label: string; color?: 
   { value: 'gray', label: '灰', color: '#c8c8c8' },
 ]
 
+const PHOTO_SPEC_GROUPS: readonly { id: PhotoSpecGroup; label: string }[] = [
+  { id: 'common-size', label: '常用尺寸' },
+  { id: 'china-document', label: '中国证件' },
+  { id: 'visa', label: '签证' },
+]
+
 /** 将平台图片和用户规格选择转换为核心布局输入，喵~ */
 function toLayoutInput(photo: AppPhoto): PhotoLayoutInput {
-  const spec = getPhotoSpec(photo.sizeSpecId) ?? PHOTO_SPECS[0]
+  const spec = getPhotoSpec(photo.presetId) ?? PHOTO_SPECS[0]
   if (!spec) throw new Error('缺少默认照片规格')
   return {
     id: photo.id,
@@ -93,6 +111,8 @@ export function App() {
   const [mode, setMode] = useState<UploadMode>('single')
   const [paperSpecId, setPaperSpecId] = useState('6r')
   const [gapMm, setGapMm] = useState(2)
+  const [exportDpi, setExportDpi] = useState(DEFAULT_EXPORT_DPI)
+  const [exportDpiInput, setExportDpiInput] = useState(String(DEFAULT_EXPORT_DPI))
   const [countMode, setCountMode] = useState<'auto' | 'custom'>('auto')
   const [customCount, setCustomCount] = useState(8)
   const [separatorColor, setSeparatorColor] = useState('#334155')
@@ -109,6 +129,10 @@ export function App() {
   const [message, setMessage] = useState('')
   const isModelSwitching = pendingBackgroundRemovalModelId !== null
   const currentModel = platform.backgroundRemovalModels.find((model) => model.id === backgroundRemovalModelId)
+  const recommendedExportDpi = useMemo(
+    () => getRecommendedExportDpi(photos, mode),
+    [mode, photos],
+  )
 
   const layout = useMemo<LayoutPlan | null>(() => {
     if (photos.length === 0) return null
@@ -120,10 +144,14 @@ export function App() {
       paper,
       photos: selectedPhotos.map(toLayoutInput),
       gapMm,
-      dpi: 300,
+      dpi: exportDpi,
       targetCount: countMode === 'custom' ? customCount : undefined,
     })
-  }, [countMode, customCount, gapMm, mode, paperSpecId, photos])
+  }, [countMode, customCount, exportDpi, gapMm, mode, paperSpecId, photos])
+
+  const isExportDpiInputValid = parseExportDpi(exportDpiInput) !== undefined
+  const dpiRecommendationWarning = getDpiRecommendationWarning(exportDpi, recommendedExportDpi)
+  const exportPixelWarning = getExportPixelWarning(layout?.pixelSize)
 
   const backgrounds = useMemo(
     () => new Map(photos.map((photo) => [photo.id, photo.background])),
@@ -135,7 +163,7 @@ export function App() {
     [photos],
   )
 
-  // 当布局或底色变化时刷新低清预览，不创建 300 DPI 大画布，喵~
+  // 当布局或底色变化时刷新低清预览，不创建最终 DPI 的大画布，喵~
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !layout) return
@@ -156,6 +184,11 @@ export function App() {
     modelSwitchAbortRef.current?.abort()
     platform.dispose()
   }, [platform])
+
+  // 自动建议值改变时同步输入框，用户输入未完成时仍保留最后一个有效布局，喵~
+  useEffect(() => {
+    setExportDpiInput(String(exportDpi))
+  }, [exportDpi])
 
   // 赞赏浮层打开时锁定页面滚动，并将键盘焦点限制在关闭按钮上，喵~
   useEffect(() => {
@@ -207,22 +240,27 @@ export function App() {
     try {
       const assets = await platform.importFiles(files)
       if (assets.length === 0) return
+      const importedPhotos: AppPhoto[] = assets.map((asset) => ({
+        ...asset,
+        presetId: 'one-inch',
+        copies: 1,
+        background: 'keep',
+        tuning: { ...DEFAULT_BACKGROUND_TUNING },
+        professionalOpen: false,
+      }))
       setPhotos((current) => [
         ...current,
-        ...assets.map((asset) => ({
-          ...asset,
-          sizeSpecId: 'one-inch',
-          copies: 1,
-          background: 'keep' as const,
-          tuning: { ...DEFAULT_BACKGROUND_TUNING },
-          professionalOpen: false,
-        })),
+        ...importedPhotos,
       ])
       trackAnalyticsEvent('photo_import', {
         input_method: inputMethod,
         photo_count: assets.length,
       })
       if ((assets.length > 1 || photos.length > 0) && mode !== 'mixed') {
+        setExportDpi((current) => raiseExportDpi(
+          current,
+          getRecommendedExportDpi([...photos, ...importedPhotos], 'mixed'),
+        ))
         setMode('mixed')
         trackAnalyticsEvent('layout_mode_change', { layout_mode: 'mixed' })
       }
@@ -251,6 +289,9 @@ export function App() {
   /** 仅在排版模式实际变化时更新状态并发送分析事件，喵~ */
   function changeLayoutMode(layoutMode: UploadMode): void {
     if (layoutMode === mode) return
+    if (layoutMode === 'mixed') {
+      setExportDpi((current) => raiseExportDpi(current, getRecommendedExportDpi(photos, layoutMode)))
+    }
     setMode(layoutMode)
     trackAnalyticsEvent('layout_mode_change', { layout_mode: layoutMode })
   }
@@ -332,6 +373,24 @@ export function App() {
     setPhotos((current) => current.map((photo) => photo.id === photoId ? { ...photo, ...patch } : photo))
   }
 
+  /** 更新照片业务预设，并在该照片参与排版时自动提高全局建议 DPI，喵~ */
+  function changePhotoPreset(photoId: string, presetId: string): void {
+    const spec = getPhotoSpec(presetId)
+    if (!spec) return
+    updatePhoto(photoId, { presetId })
+    const isActivePhoto = mode === 'mixed' || photos[0]?.id === photoId
+    if (isActivePhoto) {
+      setExportDpi((current) => raiseExportDpi(current, spec.recommendedDpi))
+    }
+  }
+
+  /** 在用户输入有效整数时实时更新布局，失焦后恢复最后一个有效值，喵~ */
+  function changeExportDpi(value: string): void {
+    setExportDpiInput(value)
+    const parsed = parseExportDpi(value)
+    if (parsed !== undefined) setExportDpi(parsed)
+  }
+
   /** 更新一张照片的专业蒙版参数并立即触发预览重绘，喵~ */
   function updatePhotoTuning(photoId: string, patch: Partial<BackgroundTuning>): void {
     setPhotos((current) => current.map((photo) => photo.id === photoId
@@ -385,30 +444,32 @@ export function App() {
     }
   }
 
-  /** 将当前完整布局导出为本地 300 DPI JPEG，喵~ */
+  /** 将当前完整布局按用户选择的 DPI 导出为本地 JPEG，喵~ */
   async function exportImage(): Promise<void> {
-    if (!layout || layout.rejected.length > 0) return
+    if (!layout || layout.rejected.length > 0 || exportPixelWarning || !isExportDpiInputValid) return
     setMessage('')
     setIsExporting(true)
     try {
       const blob = await platform.exportJpeg(layout, backgrounds, {
         separatorColor,
         backgroundRemovalModelId,
-        maxExportPixels: 25_000_000,
+        maxExportPixels: MAX_H5_EXPORT_PIXELS,
         backgroundTunings,
       })
       const paper = getPaperSpec(paperSpecId)
-      platform.download(blob, `rainnear_${layout.placedCount}张_${paper?.name ?? '照片纸'}_300dpi.jpg`)
+      platform.download(blob, `rainnear_${layout.placedCount}张_${paper?.name ?? '照片纸'}_${exportDpi}dpi.jpg`)
       trackAnalyticsEvent('photo_export', {
         layout_mode: mode,
         paper_spec_id: paperSpecId,
         placed_count: layout.placedCount,
+        export_dpi: exportDpi,
       })
     } catch (error) {
       trackAnalyticsEvent('photo_export_error', {
         layout_mode: mode,
         paper_spec_id: paperSpecId,
         placed_count: layout.placedCount,
+        export_dpi: exportDpi,
       })
       setMessage(error instanceof Error ? error.message : '照片导出失败')
     } finally {
@@ -555,11 +616,18 @@ export function App() {
                   <div className="photo-fields">
                     <div className="photo-title"><strong>{photo.name}</strong><button onClick={() => removePhoto(photo.id)} aria-label={`删除 ${photo.name}`}>×</button></div>
                     <div className="field-row">
-                      <label>尺寸<select value={photo.sizeSpecId} onChange={(event) => updatePhoto(photo.id, { sizeSpecId: event.target.value })}>
-                        {PHOTO_SPECS.map((spec) => <option key={spec.id} value={spec.id}>{spec.name} · {spec.width}×{spec.height}mm</option>)}
+                      <label>业务规格<select value={photo.presetId} onChange={(event) => changePhotoPreset(photo.id, event.target.value)}>
+                        {PHOTO_SPEC_GROUPS.map((group) => (
+                          <optgroup key={group.id} label={group.label}>
+                            {PHOTO_SPECS.filter((spec) => spec.group === group.id).map((spec) => (
+                              <option key={spec.id} value={spec.id}>{spec.name} · {spec.width}×{spec.height}mm · 建议 {spec.recommendedDpi} DPI</option>
+                            ))}
+                          </optgroup>
+                        ))}
                       </select></label>
                       {mode === 'mixed' && <label>份数<input type="number" min="1" max="50" value={photo.copies} onChange={(event) => updatePhoto(photo.id, { copies: Math.min(50, Math.max(1, Number(event.target.value))) })} /></label>}
                     </div>
+                    {getPhotoSpec(photo.presetId)?.notice && <p className="spec-notice">{getPhotoSpec(photo.presetId)?.notice}</p>}
                     <div className="background-row">
                       <span>底色</span>
                       {BACKGROUND_OPTIONS.map((option) => (
@@ -657,6 +725,28 @@ export function App() {
                 <option value="#334155">深灰</option><option value="#356bd8">蓝色</option><option value="#ffffff">白色</option>
               </select></label>
             </div>
+            <div className="dpi-setting">
+              <label htmlFor="export-dpi">导出精度</label>
+              <div className="dpi-input-wrap">
+                <input
+                  id="export-dpi"
+                  type="number"
+                  min={MIN_EXPORT_DPI}
+                  max={MAX_EXPORT_DPI}
+                  step="1"
+                  inputMode="numeric"
+                  value={exportDpiInput}
+                  aria-invalid={!isExportDpiInputValid}
+                  aria-describedby="export-dpi-hint"
+                  onChange={(event) => changeExportDpi(event.target.value)}
+                  onBlur={() => setExportDpiInput(String(exportDpi))}
+                />
+                <span>DPI</span>
+              </div>
+              <small id="export-dpi-hint">
+                {isExportDpiInputValid ? `所选照片建议至少 ${recommendedExportDpi} DPI` : `请输入 ${MIN_EXPORT_DPI}–${MAX_EXPORT_DPI} 的整数`}
+              </small>
+            </div>
             <label className="range-field"><span>裁切间距 <b>{gapMm.toFixed(1)} mm</b></span><input type="range" min="0" max="10" step="0.5" value={gapMm} onChange={(event) => setGapMm(Number(event.target.value))} /></label>
 
             {mode === 'single' && (
@@ -679,12 +769,14 @@ export function App() {
             <div className="preview-summary">
               <div><span>已排入</span><strong>{layout?.placedCount ?? 0}<small> 张</small></strong></div>
               <div><span>纸张利用率</span><strong>{layout ? Math.round(layout.utilization * 100) : 0}<small> %</small></strong></div>
-              <div><span>输出精度</span><strong>300<small> DPI</small></strong></div>
+              <div><span>输出精度</span><strong>{exportDpi}<small> DPI</small></strong></div>
             </div>
             {layout && layout.rejected.length > 0 && <div className="warning">当前纸张放不下全部照片，还有 {layout.rejected.reduce((sum, item) => sum + item.count, 0)} 张未排入，请减少数量或更换纸张。</div>}
+            {dpiRecommendationWarning && <div className="warning">{dpiRecommendationWarning}</div>}
+            {exportPixelWarning && <div className="error-message">{exportPixelWarning}</div>}
             {message && <div className="error-message">{message}</div>}
-            <button className="export-button" type="button" disabled={!layout || layout.rejected.length > 0 || isExporting || isModelSwitching} onClick={() => void exportImage()}>
-              <span>{isModelSwitching ? '正在切换抠图模型…' : isExporting ? '正在生成冲印图…' : '导出 300 DPI 冲印图'}</span><b>↓</b>
+            <button className="export-button" type="button" disabled={!layout || layout.rejected.length > 0 || Boolean(exportPixelWarning) || !isExportDpiInputValid || isExporting || isModelSwitching} onClick={() => void exportImage()}>
+              <span>{isModelSwitching ? '正在切换抠图模型…' : isExporting ? '正在生成冲印图…' : `导出 ${exportDpi} DPI 冲印图`}</span><b>↓</b>
             </button>
             <p className="export-note">导出时才生成高分辨率图片，预览不会消耗大量内存</p>
           </section>

@@ -50,6 +50,7 @@ describe('initializeAnalytics', () => {
     const initialized = initializeAnalytics({
       measurementId: 'G-ABC12345',
       isProduction: true,
+      telemetryEnabled: true,
     })
 
     expect(initialized).toBe(true)
@@ -75,9 +76,10 @@ describe('initializeAnalytics', () => {
   })
 
   it.each([
-    ['缺少 ID', { measurementId: undefined, isProduction: true }],
-    ['非法 ID', { measurementId: 'UA-123456', isProduction: true }],
-    ['非生产构建', { measurementId: 'G-ABC12345', isProduction: false }],
+    ['缺少 ID', { measurementId: undefined, isProduction: true, telemetryEnabled: true }],
+    ['非法 ID', { measurementId: 'UA-123456', isProduction: true, telemetryEnabled: true }],
+    ['非生产构建', { measurementId: 'G-ABC12345', isProduction: false, telemetryEnabled: true }],
+    ['遥测开关关闭', { measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: false }],
   ] as const)('%s 时不加载 GA', (_scenario, options) => {
     const { fakeWindow, scripts } = installBrowser()
 
@@ -89,13 +91,17 @@ describe('initializeAnalytics', () => {
   it('在非正式域名下不加载 GA', () => {
     const { scripts } = installBrowser('sandphoto-preview.vercel.app')
 
-    expect(initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true })).toBe(false)
+    expect(initializeAnalytics({
+      measurementId: 'G-ABC12345',
+      isProduction: true,
+      telemetryEnabled: true,
+    })).toBe(false)
     expect(scripts).toHaveLength(0)
   })
 
   it('重复初始化时只注入一次脚本和配置', () => {
     const { fakeWindow, scripts } = installBrowser()
-    const options = { measurementId: 'G-ABC12345', isProduction: true }
+    const options = { measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true }
 
     expect(initializeAnalytics(options)).toBe(true)
     expect(initializeAnalytics(options)).toBe(true)
@@ -110,7 +116,11 @@ describe('initializeAnalytics', () => {
       throw new Error('脚本被内容安全策略拦截')
     })
 
-    expect(initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true })).toBe(false)
+    expect(initializeAnalytics({
+      measurementId: 'G-ABC12345',
+      isProduction: true,
+      telemetryEnabled: true,
+    })).toBe(false)
     expect(() => trackAnalyticsEvent('reward_dialog_open', {})).not.toThrow()
     expect(fakeWindow.__rainnearGoogleAnalyticsInitialized__).not.toBe(true)
   })
@@ -119,24 +129,25 @@ describe('initializeAnalytics', () => {
 describe('trackAnalyticsEvent', () => {
   it('将类型约束的事件加入现有 dataLayer', () => {
     const { fakeWindow } = installBrowser()
-    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true })
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true })
 
     trackAnalyticsEvent('photo_export', {
       layout_mode: 'mixed',
       paper_spec_id: '6r',
       placed_count: 8,
+      export_dpi: 350,
     })
 
     expect(readDataLayer(fakeWindow).at(-1)).toEqual([
       'event',
       'photo_export',
-      { layout_mode: 'mixed', paper_spec_id: '6r', placed_count: 8 },
+      { layout_mode: 'mixed', paper_spec_id: '6r', placed_count: 8, export_dpi: 350 },
     ])
   })
 
   it('记录抠图模型切换但不包含照片内容', () => {
     const { fakeWindow } = installBrowser()
-    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true })
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true })
 
     trackAnalyticsEvent('background_model_change', {
       from_model_id: 'fast',

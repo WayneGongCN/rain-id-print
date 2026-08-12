@@ -31,11 +31,13 @@ interface AnalyticsEventMap {
     layout_mode: 'single' | 'mixed'
     paper_spec_id: string
     placed_count: number
+    export_dpi: number
   }
   photo_export_error: {
     layout_mode: 'single' | 'mixed'
     paper_spec_id: string
     placed_count: number
+    export_dpi: number
   }
   reward_dialog_open: Record<string, never>
 }
@@ -44,6 +46,7 @@ interface AnalyticsInitializationOptions {
   measurementId?: string
   isProduction?: boolean
   hostname?: string
+  telemetryEnabled?: boolean
 }
 
 interface ConsentSettings {
@@ -98,7 +101,14 @@ export function initializeAnalytics(options: AnalyticsInitializationOptions = {}
   const measurementId = options.measurementId ?? import.meta.env.VITE_GA_MEASUREMENT_ID
   const isProduction = options.isProduction ?? import.meta.env.PROD
   const hostname = options.hostname ?? analyticsWindow.location.hostname
-  if (!isProduction || hostname !== PRODUCTION_HOSTNAME || !measurementId || !MEASUREMENT_ID_PATTERN.test(measurementId)) {
+  const telemetryEnabled = options.telemetryEnabled ?? import.meta.env.VITE_TELEMETRY_ENABLED === 'true'
+  if (
+    !telemetryEnabled
+    || !isProduction
+    || hostname !== PRODUCTION_HOSTNAME
+    || !measurementId
+    || !MEASUREMENT_ID_PATTERN.test(measurementId)
+  ) {
     return false
   }
   if (analyticsWindow.__rainnearGoogleAnalyticsInitialized__) return true

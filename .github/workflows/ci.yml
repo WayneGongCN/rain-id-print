@@ -47,3 +47,37 @@ jobs:
 
       - name: 构建全部工作区
         run: pnpm build
+
+  deploy-preview:
+    name: 部署 Vercel 测试环境
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: '1'
+      VITE_TELEMETRY_ENABLED: 'false'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 安装 Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: 拉取测试环境配置
+        run: vercel pull --yes --environment=preview --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: 构建测试环境产物
+        run: vercel build --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: 部署测试环境
+        run: >-
+          vercel deploy --prebuilt
+          --token="${{ secrets.VERCEL_TOKEN }}"
+          --meta githubDeployment=1
+          --meta githubCommitRef="${{ github.ref_name }}"
+          --meta githubCommitSha="${{ github.sha }}"
+          --meta githubCommitOrg="${{ github.repository_owner }}"
+          --meta githubCommitRepo="${{ github.event.repository.name }}"

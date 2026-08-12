@@ -18,7 +18,7 @@ pnpm install
 pnpm dev:h5
 ```
 
-浏览器打开 `http://localhost:5173`，上传本地 JPEG、PNG 或 WebP 图片即可生成排版预览，并导出带 300 DPI 元数据的 JPEG。
+浏览器打开 `http://localhost:5173`，上传本地 JPEG、PNG 或 WebP 图片即可按常用尺寸或证件业务规格生成排版预览，并导出带自定义 DPI 元数据的 JPEG（默认 300 DPI）。
 
 ## H5 MVP 能力
 
@@ -57,15 +57,19 @@ pnpm build
 
 ## 部署
 
-项目通过 GitHub Actions 自动执行测试、类型检查和构建，并由 Vercel 托管 H5 应用。
+项目通过 GitHub Actions 执行质量门禁和 Vercel 部署，Vercel 自带的 Git 自动部署已关闭，避免 `main` 被直接发布到生产环境。
 
 - 生产域名：<https://idprint.rainnear.com>
+- 测试环境：每次推送 `main` 并通过质量门禁后创建新的 Vercel Preview Deployment。
+- 生产环境：推送任意 Git Tag 且该 Tag 对应提交属于 `main` 后发布。
 - Vercel 构建命令：`pnpm build:h5`
 - Vercel 输出目录：`packages/app-h5/dist`
 
+部署工作流需要在 GitHub Actions 中配置 `VERCEL_TOKEN`、`VERCEL_ORG_ID` 和 `VERCEL_PROJECT_ID` 三个 Repository Secrets。详细配置和发布、回滚步骤见 [`docs/vercel-deployment-environments-2026-08-12.md`](./docs/vercel-deployment-environments-2026-08-12.md)。
+
 ### Google Analytics 4
 
-H5 应用通过官方 Google tag 采集页面访问和核心功能漏斗，只有生产构建运行在 `idprint.rainnear.com` 且配置了合法 Measurement ID 时才会启用。本地开发、Vercel Preview、测试环境和缺少配置的构建都不会发送数据。
+H5 应用通过官方 Google tag 采集页面访问和核心功能漏斗，只有生产工作流显式开启遥测、构建运行在 `idprint.rainnear.com` 且配置了合法 Measurement ID 时才会启用。本地开发、Vercel Preview、测试环境和缺少配置的构建都不会发送数据。
 
 在 Vercel 项目的 Production 环境中添加以下变量并重新部署：
 
@@ -73,4 +77,4 @@ H5 应用通过官方 Google tag 采集页面访问和核心功能漏斗，只�
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
 
-该 Measurement ID 会随 Vite 构建产物公开，不应将任何密钥或私密凭据放入 `VITE_*` 变量。完整事件字典、隐私边界、GA4 后台配置和验证流程见 [`docs/google-analytics-integration-2026-08-11.md`](./docs/google-analytics-integration-2026-08-11.md)。
+生产工作流会设置 `VITE_TELEMETRY_ENABLED=true`，测试工作流固定设置为 `false`。所有后续遥测 SDK 都必须复用该总开关。Measurement ID 会随 Vite 构建产物公开，不应将任何密钥或私密凭据放入 `VITE_*` 变量。完整事件字典、隐私边界、GA4 后台配置和验证流程见 [`docs/google-analytics-integration-2026-08-11.md`](./docs/google-analytics-integration-2026-08-11.md)。

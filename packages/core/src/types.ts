@@ -16,10 +16,24 @@ export interface NormalizedCrop {
   height: number
 }
 
+/** 用于跨端展示和筛选照片业务规格的稳定分组，喵~ */
+export type PhotoSpecGroup = 'common-size' | 'china-document' | 'visa'
+
+/** 记录规格数据的原始依据和最近核验时间，喵~ */
+export interface PhotoSpecReference {
+  name: string
+  url: string
+  verifiedAt: string
+}
+
 export interface PhotoSpec extends SizeMm {
   id: string
   name: string
   category: 'photo'
+  group: PhotoSpecGroup
+  recommendedDpi: number
+  notice?: string
+  references?: readonly PhotoSpecReference[]
 }
 
 export interface PaperSpec extends SizeMm {
@@ -74,4 +88,3 @@ export interface LayoutPlan {
   requestedCount: number
   utilization: number
 }
-

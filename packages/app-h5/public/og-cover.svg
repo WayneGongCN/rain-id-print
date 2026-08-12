@@ -18,7 +18,7 @@
   <text x="170" y="137" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="4" fill="#77718b">RAINNEAR PHOTO</text>
   <text x="76" y="286" font-family="Arial,'Noto Sans SC',sans-serif" font-size="64" font-weight="800" fill="#232036">免费在线证件照排版</text>
   <text x="76" y="370" font-family="Arial,'Noto Sans SC',sans-serif" font-size="64" font-weight="800" fill="#6654ea">照片不上传，隐私留在本地</text>
-  <text x="80" y="442" font-family="Arial,'Noto Sans SC',sans-serif" font-size="28" fill="#666176">智能换底 · 多尺寸混排 · 6 寸 / A4 · 300 DPI 导出</text>
+  <text x="80" y="442" font-family="Arial,'Noto Sans SC',sans-serif" font-size="28" fill="#666176">智能换底 · 证件规格 · 多尺寸混排 · 自定义 DPI</text>
   <rect x="78" y="495" width="278" height="60" rx="30" fill="url(#brand)"/>
   <text x="217" y="534" text-anchor="middle" font-family="Arial,'Noto Sans SC',sans-serif" font-size="23" font-weight="700" fill="#fff">idprint.rainnear.com</text>
   <g transform="translate(905 178) rotate(5)">
