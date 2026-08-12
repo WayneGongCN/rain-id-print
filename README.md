@@ -25,6 +25,7 @@ pnpm dev:h5
 - 支持一寸、二寸、签证等常用证件照规格，以及 6R、A4 等纸张规格。
 - 支持单规格批量排版和多规格混合排版。
 - 支持保留原背景，或在浏览器本地完成抠图后替换白、蓝、红、灰背景。
+- 支持在高级抠图设置中选择快速或高清模型，并记住当前浏览器的选择。
 - 支持专业微调模式，实时调整边缘收缩/扩张、边缘硬度、羽化和去色溢出，并将同样效果用于最终导出。
 - 支持间距、裁切线、纸张方向、份数和自定义张数配置。
 - 图片和抠图过程均在浏览器本地完成，不上传服务器。
@@ -37,6 +38,14 @@ Cross-Origin-Embedder-Policy: require-corp
 ```
 
 Vite 开发和预览服务已经内置这两个响应头。
+
+## 赞赏
+
+如果雨邻证照帮到了你，欢迎在在线页面顶部点击“赞赏”，选择微信、支付宝或 Buy Me a Coffee；也可以直接扫描下方二维码，支持项目继续维护和改进。
+
+<img src="./packages/app-h5/src/assets/alipay-reward-code.jpg" alt="Buy Me a Coffee 赞赏码" width="280">
+<img src="./packages/app-h5/src/assets/wechat-reward-code.jpg" alt="Buy Me a Coffee 赞赏码" width="280">
+<img src="./packages/app-h5/src/assets/buy-me-a-coffee-reward-code.png" alt="Buy Me a Coffee 赞赏码" width="280">
 
 ## 验证
 

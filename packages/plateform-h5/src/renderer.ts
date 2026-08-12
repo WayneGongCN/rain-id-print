@@ -8,7 +8,7 @@ import {
 } from '@rainnear/core'
 import { patchJpegDpi } from './jpeg-dpi'
 import { refineRgbaPixels, type RgbColor } from './matte-refinement'
-import type { StoredImage } from './resource-store'
+import type { StoredCutout, StoredImage } from './resource-store'
 import { H5ResourceStore } from './resource-store'
 import type { RenderOptions } from './types'
 
@@ -75,44 +75,43 @@ function getRefinementBucket(requiredMaxDimension: number): number {
 }
 
 /** 将最近的专业预览结果写入有上限的资源缓存，避免连续拖动耗尽内存，喵~ */
-function cacheRefinedCutout(resource: StoredImage, cacheKey: string, canvas: HTMLCanvasElement): void {
-  resource.refinedCutouts ??= new Map()
-  while (resource.refinedCutouts.size >= 12) {
-    const oldestKey = resource.refinedCutouts.keys().next().value as string | undefined
+function cacheRefinedCutout(cutout: StoredCutout, cacheKey: string, canvas: HTMLCanvasElement): void {
+  while (cutout.refinedCutouts.size >= 12) {
+    const oldestKey = cutout.refinedCutouts.keys().next().value as string | undefined
     if (!oldestKey) break
-    const oldestCanvas = resource.refinedCutouts.get(oldestKey)
+    const oldestCanvas = cutout.refinedCutouts.get(oldestKey)
     if (oldestCanvas) {
       oldestCanvas.width = 1
       oldestCanvas.height = 1
     }
-    resource.refinedCutouts.delete(oldestKey)
+    cutout.refinedCutouts.delete(oldestKey)
   }
-  resource.refinedCutouts.set(cacheKey, canvas)
+  cutout.refinedCutouts.set(cacheKey, canvas)
 }
 
 /** 生成并缓存应用专业参数后的透明前景画布，喵~ */
 function getRefinedCutout(
   resource: StoredImage,
+  cutout: StoredCutout,
   tuning: BackgroundTuning | undefined,
   requiredMaxDimension: number,
 ): DrawableSource {
-  if (!resource.cutout) throw new Error('换底色前必须先完成本地抠图')
-  if (isDefaultBackgroundTuning(tuning)) return resource.cutout
+  if (isDefaultBackgroundTuning(tuning)) return cutout.image
 
   const normalized = normalizeBackgroundTuning(tuning)
   const bucket = getRefinementBucket(requiredMaxDimension)
   const cacheKey = `${bucket}:${normalized.edgeShiftPx}:${normalized.edgeHardness}:${normalized.featherPx}:${normalized.decontaminate}`
-  const cached = resource.refinedCutouts?.get(cacheKey)
+  const cached = cutout.refinedCutouts.get(cacheKey)
   if (cached) return cached
 
-  const sourceMaxDimension = Math.max(resource.cutout.naturalWidth, resource.cutout.naturalHeight)
+  const sourceMaxDimension = Math.max(cutout.image.naturalWidth, cutout.image.naturalHeight)
   const scale = Math.min(1, bucket / sourceMaxDimension)
   const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(resource.cutout.naturalWidth * scale))
-  canvas.height = Math.max(1, Math.round(resource.cutout.naturalHeight * scale))
+  canvas.width = Math.max(1, Math.round(cutout.image.naturalWidth * scale))
+  canvas.height = Math.max(1, Math.round(cutout.image.naturalHeight * scale))
   const context = canvas.getContext('2d', { willReadFrequently: true })
   if (!context) throw new Error('当前浏览器不支持透明蒙版微调')
-  context.drawImage(resource.cutout, 0, 0, canvas.width, canvas.height)
+  context.drawImage(cutout.image, 0, 0, canvas.width, canvas.height)
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
   const refined = refineRgbaPixels(
     imageData.data,
@@ -123,7 +122,7 @@ function getRefinedCutout(
   )
   imageData.data.set(refined)
   context.putImageData(imageData, 0, 0)
-  cacheRefinedCutout(resource, cacheKey, canvas)
+  cacheRefinedCutout(cutout, cacheKey, canvas)
   return canvas
 }
 
@@ -227,7 +226,12 @@ export class H5CanvasRenderer {
       ))
       const source = background === 'keep'
         ? resource.image
-        : getRefinedCutout(resource, options.backgroundTunings?.get(item.photoId), requiredMaxDimension)
+        : getRefinedCutout(
+            resource,
+            this.store.getCutout(item.photoId, options.backgroundRemovalModelId),
+            options.backgroundTunings?.get(item.photoId),
+            requiredMaxDimension,
+          )
       drawPhoto(context, source, background, item.crop, destination)
       context.strokeStyle = options.separatorColor
       context.lineWidth = Math.max(1, mmToPixels(0.1, plan.dpi) * (width / plan.pixelSize.width))

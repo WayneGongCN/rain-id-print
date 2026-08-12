@@ -17,6 +17,16 @@ interface AnalyticsEventMap {
   background_change_error: {
     background_mode: 'keep' | 'white' | 'blue' | 'red' | 'gray'
   }
+  background_model_change: {
+    from_model_id: string
+    to_model_id: string
+    processed_photo_count: number
+  }
+  background_model_change_error: {
+    from_model_id: string
+    to_model_id: string
+    processed_photo_count: number
+  }
   photo_export: {
     layout_mode: 'single' | 'mixed'
     paper_spec_id: string

@@ -11,6 +11,7 @@ export interface H5ImageAsset {
 
 export interface RenderOptions {
   separatorColor: string
+  backgroundRemovalModelId: BackgroundRemovalModelId
   previewMaxEdge?: number
   maxExportPixels?: number
   backgroundTunings?: ReadonlyMap<string, BackgroundTuning>
@@ -22,7 +23,39 @@ export interface BackgroundProgress {
   total?: number
 }
 
+export type BackgroundRemovalModelId = string
+
+export interface BackgroundRemovalModelDescriptor {
+  readonly id: BackgroundRemovalModelId
+  readonly name: string
+  readonly description: string
+  readonly estimatedDownloadBytes?: number
+}
+
+export interface BackgroundRemovalRunOptions {
+  readonly signal?: AbortSignal
+  readonly onProgress?: (progress: BackgroundProgress) => void
+}
+
+export interface BackgroundRemovalBackend {
+  readonly descriptor: BackgroundRemovalModelDescriptor
+  removeBackground(source: Blob, options?: BackgroundRemovalRunOptions): Promise<Blob>
+  dispose?(): void
+}
+
+export interface PrepareCutoutOptions extends BackgroundRemovalRunOptions {
+  readonly modelId: BackgroundRemovalModelId
+}
+
+export interface H5PlatformOptions {
+  readonly backgroundRemovalBackends?: readonly BackgroundRemovalBackend[]
+  readonly defaultBackgroundRemovalModelId?: BackgroundRemovalModelId
+}
+
 export interface H5Platform {
+  readonly backgroundRemovalModels: readonly BackgroundRemovalModelDescriptor[]
+  readonly defaultBackgroundRemovalModelId: BackgroundRemovalModelId
+
   /**
    * 导入并解码浏览器本地图片，Promise 在全部有效图片可绘制时完成，喵~
    * @param files 用户选择或拖入的文件列表，喵~
@@ -32,9 +65,9 @@ export interface H5Platform {
   /**
    * 为指定照片准备透明前景，Promise 在本地模型处理完成时返回，喵~
    * @param assetId 平台资源标识，喵~
-   * @param onProgress 模型下载和处理进度回调，喵~
+   * @param options 模型标识、取消信号和处理进度，喵~
    */
-  prepareCutout(assetId: string, onProgress?: (progress: BackgroundProgress) => void): Promise<void>
+  prepareCutout(assetId: string, options: PrepareCutoutOptions): Promise<void>
 
   /**
    * 将布局计划绘制到页面预览画布，Promise 在绘制完成后兑现，喵~

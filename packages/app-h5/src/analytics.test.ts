@@ -134,6 +134,23 @@ describe('trackAnalyticsEvent', () => {
     ])
   })
 
+  it('记录抠图模型切换但不包含照片内容', () => {
+    const { fakeWindow } = installBrowser()
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true })
+
+    trackAnalyticsEvent('background_model_change', {
+      from_model_id: 'fast',
+      to_model_id: 'quality',
+      processed_photo_count: 3,
+    })
+
+    expect(readDataLayer(fakeWindow).at(-1)).toEqual([
+      'event',
+      'background_model_change',
+      { from_model_id: 'fast', to_model_id: 'quality', processed_photo_count: 3 },
+    ])
+  })
+
   it('GA 未初始化时发送事件不会抛错或创建队列', () => {
     const { fakeWindow } = installBrowser('localhost')
 

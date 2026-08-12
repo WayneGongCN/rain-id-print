@@ -28,19 +28,20 @@ button { cursor: pointer; }
 .reward-trigger:focus-visible, .reward-close:focus-visible { outline: 3px solid rgba(105,89,237,.24); outline-offset: 2px; }
 
 .reward-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: rgba(25,23,42,.52); backdrop-filter: blur(8px); }
-.reward-dialog { position: relative; width: min(900px, 100%); max-height: calc(100vh - 48px); overflow: auto; border: 1px solid rgba(255,255,255,.65); border-radius: 24px; padding: 34px; background: linear-gradient(155deg, #fff, #f8f7ff); box-shadow: 0 34px 100px rgba(23,19,54,.32); }
+.reward-dialog { position: relative; width: min(1100px, 100%); max-height: calc(100vh - 48px); overflow: auto; border: 1px solid rgba(255,255,255,.65); border-radius: 24px; padding: 34px; background: linear-gradient(155deg, #fff, #f8f7ff); box-shadow: 0 34px 100px rgba(23,19,54,.32); }
 .reward-close { position: absolute; top: 18px; right: 18px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e2dfef; border-radius: 50%; padding: 0 0 2px; color: #747083; background: #fff; font-size: 23px; line-height: 1; transition: .2s ease; }
 .reward-close:hover { color: #5546d7; border-color: #cfc8ff; background: #f3f1ff; }
 .reward-heading { padding-right: 42px; }
 .reward-heading > span { color: #5f4fe0; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
 .reward-heading h2 { margin: 7px 0 6px; color: #29263b; font-size: 26px; letter-spacing: -.03em; }
 .reward-heading p { margin: 0; color: #888596; font-size: 12px; }
-.reward-code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 25px; }
+.reward-code-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 25px; }
 .reward-code-card { min-width: 0; margin: 0; padding: 13px; border: 1px solid #e6e3f0; border-radius: 17px; background: rgba(255,255,255,.82); }
 .reward-code-card figcaption { display: flex; align-items: center; gap: 7px; padding: 1px 2px 11px; color: #4b485a; font-size: 12px; font-weight: 700; }
 .reward-code-card figcaption i { width: 8px; height: 8px; border-radius: 50%; }
 .wechat-dot { background: #20bd68; box-shadow: 0 0 0 4px rgba(32,189,104,.12); }
 .alipay-dot { background: #1677ff; box-shadow: 0 0 0 4px rgba(22,119,255,.12); }
+.buy-me-a-coffee-dot { background: #ffdd00; box-shadow: 0 0 0 4px rgba(255,221,0,.18); }
 .reward-code-frame { position: relative; height: min(53vh, 520px); overflow: hidden; border-radius: 11px; background: #fff; }
 .reward-code-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 
@@ -75,6 +76,25 @@ button { cursor: pointer; }
 .mode-tabs button, .segmented button { border: 0; border-radius: 9px; color: #626675; background: transparent; font-size: 12px; font-weight: 600; }
 .mode-tabs button { padding: 9px; }
 .mode-tabs button.active, .segmented button.active { color: #5f51dc; background: #fff; box-shadow: 0 3px 12px rgba(38,35,64,.08); }
+
+.model-settings { margin-top: 11px; overflow: hidden; border: 1px solid #e5e1fb; border-radius: 12px; background: #faf9ff; }
+.model-settings.is-open { box-shadow: 0 9px 24px rgba(85,69,190,.08); }
+.model-settings-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; padding: 10px 11px; color: #59536f; background: transparent; font-size: 12px; font-weight: 700; }
+.model-settings-toggle span { display: flex; align-items: center; gap: 7px; }
+.model-settings-toggle b { padding: 2px 5px; border-radius: 4px; color: #fff; background: linear-gradient(120deg, #7665f4, #5a48dc); font-size: 12px; letter-spacing: .05em; }
+.model-settings-toggle small { color: #6254c7; font-size: 12px; font-weight: 600; }
+.model-options { display: grid; gap: 8px; margin: 0; border: 0; border-top: 1px solid #ebe8fb; padding: 10px; background: #fff; }
+.model-options:disabled { opacity: .72; }
+.model-options legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.model-options label { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; border: 1px solid #e5e3ed; border-radius: 9px; padding: 9px; color: #555968; background: #fafafd; cursor: pointer; }
+.model-options label.selected { border-color: #8b7df2; background: #f5f3ff; box-shadow: 0 0 0 2px rgba(104,87,239,.1); }
+.model-options input { margin: 0; accent-color: #6d5df0; }
+.model-options label > span { min-width: 0; display: grid; gap: 2px; }
+.model-options strong { font-size: 12px; }
+.model-options small { overflow: hidden; color: #737786; font-size: 12px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.model-options em { color: #6a5dd0; font-size: 12px; font-style: normal; white-space: nowrap; }
+.model-switch-progress { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 8px 9px; color: #574bc3; background: #f3f1ff; font-size: 12px; line-height: 1.4; }
+.model-switch-progress i { flex: none; width: 9px; height: 9px; border: 1.5px solid #b8b0f5; border-top-color: #6858ed; border-radius: 50%; animation: spin .8s linear infinite; }
 
 .photo-list { display: grid; gap: 11px; margin-top: 15px; }
 .photo-card { display: grid; grid-template-columns: 76px 1fr; gap: 13px; padding: 11px; border: 1px solid #e6e4f0; border-radius: 13px; background: #fff; transition: .2s; }
@@ -199,7 +219,8 @@ footer a { color: #5848cf; text-underline-offset: 2px; }
   .reward-code-grid { grid-template-columns: 1fr; gap: 13px; margin-top: 20px; }
   .reward-code-frame { height: auto; }
   .wechat-code-frame { aspect-ratio: 1; }
-  .alipay-code-frame { aspect-ratio: 2 / 3; }
+  .alipay-code-frame { aspect-ratio: 1; }
+  .buy-me-a-coffee-code-frame { aspect-ratio: 1; }
   .workspace { width: calc(100% - 24px); padding-top: 35px; }
   .intro-panel h1 { font-size: 41px; }
   .feature-row { flex-wrap: wrap; }
@@ -207,6 +228,8 @@ footer a { color: #5848cf; text-underline-offset: 2px; }
   .control-panel, .preview-panel { padding: 22px 17px; }
   .photo-card { grid-template-columns: 62px 1fr; }
   .photo-card > img { width: 62px; height: 82px; }
+  .model-options label { grid-template-columns: auto minmax(0, 1fr); }
+  .model-options em { grid-column: 2; }
   .professional-hint { align-items: flex-start; flex-direction: column; }
   .canvas-stage { min-height: 310px; padding: 16px; }
   .seo-details { margin-top: 56px; }

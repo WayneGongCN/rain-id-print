@@ -12,9 +12,17 @@ import {
   type LayoutPlan,
   type PhotoLayoutInput,
 } from '@rainnear/core'
-import { createH5Platform, type BackgroundProgress, type H5ImageAsset } from '@rainnear/plateform-h5'
+import {
+  createH5Platform,
+  type BackgroundProgress,
+  type BackgroundRemovalModelId,
+  type H5ImageAsset,
+} from '@rainnear/plateform-h5'
 import alipayRewardCode from './assets/alipay-reward-code.jpg'
+import buyMeACoffeeRewardCode from './assets/buy-me-a-coffee-reward-code.png'
 import wechatRewardCode from './assets/wechat-reward-code.jpg'
+import { readBackgroundModelPreference, writeBackgroundModelPreference } from './background-model-preference'
+import { prepareBackgroundModelForAssets } from './background-model-switch'
 import { SeoDetails, SeoIntro } from './SeoContent'
 import { trackAnalyticsEvent } from './analytics'
 
@@ -28,6 +36,13 @@ interface AppPhoto extends H5ImageAsset {
 }
 
 type UploadMode = 'single' | 'mixed'
+
+interface ModelSwitchProgress {
+  modelName: string
+  current: number
+  total: number
+  detail: string
+}
 
 const BACKGROUND_OPTIONS: Array<{ value: BackgroundMode; label: string; color?: string }> = [
   { value: 'keep', label: '原图' },
@@ -59,6 +74,12 @@ function formatProgress(progress: BackgroundProgress): string {
   return '正在加载本地模型…'
 }
 
+/** 将模型资源大小转换为适合设置面板展示的近似值，喵~ */
+function formatDownloadSize(bytes?: number): string {
+  if (!bytes) return '按需加载'
+  return `首次约 ${Math.round(bytes / 1024 / 1024)} MB`
+}
+
 /** 提供 H5 MVP 的照片编辑、实时预览和本地导出流程，喵~ */
 export function App() {
   const platform = useMemo(() => createH5Platform(), [])
@@ -66,6 +87,8 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rewardButtonRef = useRef<HTMLButtonElement>(null)
   const rewardCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const modelSwitchAbortRef = useRef<AbortController | null>(null)
+  const modelSwitchVersionRef = useRef(0)
   const [photos, setPhotos] = useState<AppPhoto[]>([])
   const [mode, setMode] = useState<UploadMode>('single')
   const [paperSpecId, setPaperSpecId] = useState('6r')
@@ -77,7 +100,15 @@ export function App() {
   const [isImporting, setIsImporting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isRewardOpen, setIsRewardOpen] = useState(false)
+  const [isModelSettingsOpen, setIsModelSettingsOpen] = useState(false)
+  const [backgroundRemovalModelId, setBackgroundRemovalModelId] = useState<BackgroundRemovalModelId>(() => (
+    readBackgroundModelPreference(platform.backgroundRemovalModels, platform.defaultBackgroundRemovalModelId)
+  ))
+  const [pendingBackgroundRemovalModelId, setPendingBackgroundRemovalModelId] = useState<BackgroundRemovalModelId | null>(null)
+  const [modelSwitchProgress, setModelSwitchProgress] = useState<ModelSwitchProgress | null>(null)
   const [message, setMessage] = useState('')
+  const isModelSwitching = pendingBackgroundRemovalModelId !== null
+  const currentModel = platform.backgroundRemovalModels.find((model) => model.id === backgroundRemovalModelId)
 
   const layout = useMemo<LayoutPlan | null>(() => {
     if (photos.length === 0) return null
@@ -111,15 +142,20 @@ export function App() {
     const timer = window.setTimeout(() => {
       platform.renderPreview(canvas, layout, backgrounds, {
         separatorColor,
+        backgroundRemovalModelId,
         previewMaxEdge: 1400,
         backgroundTunings,
       }).catch((error: unknown) => setMessage(error instanceof Error ? error.message : '预览生成失败'))
     }, 80)
     return () => window.clearTimeout(timer)
-  }, [backgrounds, backgroundTunings, layout, platform, separatorColor])
+  }, [backgroundRemovalModelId, backgrounds, backgroundTunings, layout, platform, separatorColor])
 
   // 页面卸载时释放所有 Object URL 和模型结果，避免长时间占用内存，喵~
-  useEffect(() => () => platform.dispose(), [platform])
+  useEffect(() => () => {
+    modelSwitchVersionRef.current += 1
+    modelSwitchAbortRef.current?.abort()
+    platform.dispose()
+  }, [platform])
 
   // 赞赏浮层打开时锁定页面滚动，并将键盘焦点限制在关闭按钮上，喵~
   useEffect(() => {
@@ -219,6 +255,78 @@ export function App() {
     trackAnalyticsEvent('layout_mode_change', { layout_mode: layoutMode })
   }
 
+  /** 在全部已换底照片准备成功后原子提交新的全局抠图模型，喵~ */
+  async function changeBackgroundRemovalModel(modelId: BackgroundRemovalModelId): Promise<void> {
+    if (modelId === backgroundRemovalModelId || isModelSwitching) return
+    const targetModel = platform.backgroundRemovalModels.find((model) => model.id === modelId)
+    if (!targetModel) {
+      setMessage(`抠图模型 ${modelId} 不可用`)
+      return
+    }
+
+    const affectedAssetIds = photos.filter((photo) => photo.background !== 'keep').map((photo) => photo.id)
+    const previousModelId = backgroundRemovalModelId
+    setMessage('')
+    if (affectedAssetIds.length === 0) {
+      setBackgroundRemovalModelId(modelId)
+      writeBackgroundModelPreference(modelId)
+      trackAnalyticsEvent('background_model_change', {
+        from_model_id: previousModelId,
+        to_model_id: modelId,
+        processed_photo_count: 0,
+      })
+      return
+    }
+
+    const controller = new AbortController()
+    const taskVersion = ++modelSwitchVersionRef.current
+    modelSwitchAbortRef.current = controller
+    setPendingBackgroundRemovalModelId(modelId)
+    setModelSwitchProgress({
+      modelName: targetModel.name,
+      current: 1,
+      total: affectedAssetIds.length,
+      detail: '正在准备本地模型…',
+    })
+
+    try {
+      await prepareBackgroundModelForAssets(platform, affectedAssetIds, modelId, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          if (modelSwitchVersionRef.current !== taskVersion) return
+          setModelSwitchProgress({
+            modelName: targetModel.name,
+            current: progress.current,
+            total: progress.total,
+            detail: progress.modelProgress ? formatProgress(progress.modelProgress) : '正在准备照片…',
+          })
+        },
+      })
+      if (modelSwitchVersionRef.current !== taskVersion || controller.signal.aborted) return
+      setBackgroundRemovalModelId(modelId)
+      writeBackgroundModelPreference(modelId)
+      trackAnalyticsEvent('background_model_change', {
+        from_model_id: previousModelId,
+        to_model_id: modelId,
+        processed_photo_count: affectedAssetIds.length,
+      })
+    } catch (error) {
+      if (modelSwitchVersionRef.current !== taskVersion || controller.signal.aborted) return
+      trackAnalyticsEvent('background_model_change_error', {
+        from_model_id: previousModelId,
+        to_model_id: modelId,
+        processed_photo_count: affectedAssetIds.length,
+      })
+      setMessage(error instanceof Error ? `切换抠图模型失败：${error.message}` : '切换抠图模型失败')
+    } finally {
+      if (modelSwitchVersionRef.current === taskVersion) {
+        modelSwitchAbortRef.current = null
+        setPendingBackgroundRemovalModelId(null)
+        setModelSwitchProgress(null)
+      }
+    }
+  }
+
   /** 更新一张照片的尺寸或份数等可编辑字段，喵~ */
   function updatePhoto(photoId: string, patch: Partial<AppPhoto>): void {
     setPhotos((current) => current.map((photo) => photo.id === photoId ? { ...photo, ...patch } : photo))
@@ -238,6 +346,13 @@ export function App() {
 
   /** 删除照片并同步释放平台层图像资源，喵~ */
   function removePhoto(photoId: string): void {
+    if (isModelSwitching) {
+      modelSwitchVersionRef.current += 1
+      modelSwitchAbortRef.current?.abort()
+      modelSwitchAbortRef.current = null
+      setPendingBackgroundRemovalModelId(null)
+      setModelSwitchProgress(null)
+    }
     platform.removeAsset(photoId)
     setPhotos((current) => current.filter((photo) => photo.id !== photoId))
   }
@@ -255,8 +370,11 @@ export function App() {
 
     updatePhoto(photoId, { processingText: '正在加载本地模型…' })
     try {
-      await platform.prepareCutout(photoId, (progress) => {
-        updatePhoto(photoId, { processingText: formatProgress(progress) })
+      await platform.prepareCutout(photoId, {
+        modelId: backgroundRemovalModelId,
+        onProgress: (progress) => {
+          updatePhoto(photoId, { processingText: formatProgress(progress) })
+        },
       })
       updatePhoto(photoId, { background, processingText: undefined })
       trackAnalyticsEvent('background_change', { background_mode: background })
@@ -275,6 +393,7 @@ export function App() {
     try {
       const blob = await platform.exportJpeg(layout, backgrounds, {
         separatorColor,
+        backgroundRemovalModelId,
         maxExportPixels: 25_000_000,
         backgroundTunings,
       })
@@ -340,7 +459,7 @@ export function App() {
             <div className="reward-heading">
               <span>THANK YOU</span>
               <h2 id="reward-dialog-title">感谢支持</h2>
-              <p id="reward-dialog-description">选择微信或支付宝扫码赞赏</p>
+              <p id="reward-dialog-description">选择微信、支付宝或 Buy Me a Coffee 扫码赞赏</p>
             </div>
             <div className="reward-code-grid">
               <figure className="reward-code-card">
@@ -353,6 +472,12 @@ export function App() {
                 <figcaption><i className="alipay-dot" />支付宝收款码</figcaption>
                 <div className="reward-code-frame alipay-code-frame">
                   <img src={alipayRewardCode} alt="支付宝收款码" />
+                </div>
+              </figure>
+              <figure className="reward-code-card">
+                <figcaption><i className="buy-me-a-coffee-dot" />Buy Me a Coffee</figcaption>
+                <div className="reward-code-frame buy-me-a-coffee-code-frame">
+                  <img src={buyMeACoffeeRewardCode} alt="Buy Me a Coffee 赞赏码" />
                 </div>
               </figure>
             </div>
@@ -388,6 +513,41 @@ export function App() {
               </div>
             )}
 
+            {photos.length > 0 && (
+              <div className={`model-settings ${isModelSettingsOpen ? 'is-open' : ''}`}>
+                <button
+                  className="model-settings-toggle"
+                  type="button"
+                  aria-expanded={isModelSettingsOpen}
+                  onClick={() => setIsModelSettingsOpen((current) => !current)}
+                >
+                  <span><b>AI</b> 高级抠图设置</span>
+                  <small>{modelSwitchProgress ? `${modelSwitchProgress.modelName} ${modelSwitchProgress.current}/${modelSwitchProgress.total}` : currentModel?.name}</small>
+                </button>
+                {isModelSettingsOpen && (
+                  <fieldset className="model-options" disabled={isModelSwitching}>
+                    <legend>选择全局抠图模型</legend>
+                    {platform.backgroundRemovalModels.map((model) => (
+                      <label className={backgroundRemovalModelId === model.id ? 'selected' : ''} key={model.id}>
+                        <input
+                          type="radio"
+                          name="background-removal-model"
+                          value={model.id}
+                          checked={backgroundRemovalModelId === model.id}
+                          onChange={() => void changeBackgroundRemovalModel(model.id)}
+                        />
+                        <span><strong>{model.name}</strong><small>{model.description}</small></span>
+                        <em>{formatDownloadSize(model.estimatedDownloadBytes)}</em>
+                      </label>
+                    ))}
+                    {modelSwitchProgress && (
+                      <div className="model-switch-progress"><i />正在准备{modelSwitchProgress.modelName} {modelSwitchProgress.current}/{modelSwitchProgress.total} · {modelSwitchProgress.detail}</div>
+                    )}
+                  </fieldset>
+                )}
+              </div>
+            )}
+
             <div className="photo-list">
               {photos.map((photo, index) => (
                 <article className={`photo-card ${mode === 'single' && index > 0 ? 'is-muted' : ''}`} key={photo.id}>
@@ -410,7 +570,7 @@ export function App() {
                           onClick={() => void changeBackground(photo.id, option.value)}
                           aria-label={`设置${option.label}底色`}
                           aria-pressed={photo.background === option.value}
-                          disabled={Boolean(photo.processingText)}
+                          disabled={Boolean(photo.processingText) || isModelSwitching}
                         >
                           {option.color ? <i style={{ background: option.color }} /> : '原'}
                         </button>
@@ -523,8 +683,8 @@ export function App() {
             </div>
             {layout && layout.rejected.length > 0 && <div className="warning">当前纸张放不下全部照片，还有 {layout.rejected.reduce((sum, item) => sum + item.count, 0)} 张未排入，请减少数量或更换纸张。</div>}
             {message && <div className="error-message">{message}</div>}
-            <button className="export-button" type="button" disabled={!layout || layout.rejected.length > 0 || isExporting} onClick={() => void exportImage()}>
-              <span>{isExporting ? '正在生成冲印图…' : '导出 300 DPI 冲印图'}</span><b>↓</b>
+            <button className="export-button" type="button" disabled={!layout || layout.rejected.length > 0 || isExporting || isModelSwitching} onClick={() => void exportImage()}>
+              <span>{isModelSwitching ? '正在切换抠图模型…' : isExporting ? '正在生成冲印图…' : '导出 300 DPI 冲印图'}</span><b>↓</b>
             </button>
             <p className="export-note">导出时才生成高分辨率图片，预览不会消耗大量内存</p>
           </section>

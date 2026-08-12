@@ -1,19 +1,27 @@
 import type { H5ImageAsset } from './types'
+import type { BackgroundRemovalModelId } from './types'
+import { createBackgroundRemovalAbortError } from './background-removal'
 import { createResourceId } from './resource-id'
+
+interface StoredCutout {
+  image: HTMLImageElement
+  objectUrl: string
+  refinedCutouts: Map<string, HTMLCanvasElement>
+  lastAccess: number
+}
 
 interface StoredImage extends H5ImageAsset {
   image: HTMLImageElement
   originalFile: File
-  cutout?: HTMLImageElement
-  cutoutUrl?: string
-  cutoutPromise?: Promise<void>
-  refinedCutouts?: Map<string, HTMLCanvasElement>
+  cutouts: Map<BackgroundRemovalModelId, StoredCutout>
+  cutoutPromises: Map<BackgroundRemovalModelId, Promise<void>>
   sampledBackground?: readonly [number, number, number]
 }
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_FILE_BYTES = 8 * 1024 * 1024
 const MAX_SOURCE_PIXELS = 40_000_000
+const MAX_CUTOUT_MODELS_PER_RESOURCE = 2
 
 /** 等待浏览器完整解码一个图片地址，喵~ */
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -29,6 +37,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 /** 管理浏览器图片对象和 Object URL 的完整生命周期，喵~ */
 export class H5ResourceStore {
   private readonly resources = new Map<string, StoredImage>()
+  private cutoutAccessCounter = 0
 
   /** 导入一个浏览器文件并生成稳定资源标识，喵~ */
   async importFile(file: File): Promise<H5ImageAsset> {
@@ -51,6 +60,8 @@ export class H5ResourceStore {
         size: file.size,
         image,
         originalFile: file,
+        cutouts: new Map(),
+        cutoutPromises: new Map(),
       }
       this.resources.set(id, stored)
       return this.toPublicAsset(stored)
@@ -67,42 +78,69 @@ export class H5ResourceStore {
     return resource
   }
 
-  /** 缓存指定资源的透明前景并合并同时发起的请求，喵~ */
-  async ensureCutout(assetId: string, task: (resource: StoredImage) => Promise<Blob>): Promise<void> {
+  /** 读取并触碰指定模型的透明前景，供 LRU 缓存判断最近使用顺序，喵~ */
+  getCutout(assetId: string, modelId: BackgroundRemovalModelId): StoredCutout {
     const resource = this.get(assetId)
-    if (resource.cutout) return
-    if (resource.cutoutPromise) return resource.cutoutPromise
+    const cutout = resource.cutouts.get(modelId)
+    if (!cutout) throw new Error(`照片 ${assetId} 尚未使用${modelId}模型完成抠图`)
+    cutout.lastAccess = ++this.cutoutAccessCounter
+    return cutout
+  }
 
-    resource.cutoutPromise = (async () => {
+  /** 缓存指定资源和模型的透明前景并合并同模型并发请求，喵~ */
+  async ensureCutout(
+    assetId: string,
+    modelId: BackgroundRemovalModelId,
+    task: (resource: StoredImage) => Promise<Blob>,
+  ): Promise<void> {
+    const resource = this.get(assetId)
+    const existing = resource.cutouts.get(modelId)
+    if (existing) {
+      existing.lastAccess = ++this.cutoutAccessCounter
+      return
+    }
+    const existingPromise = resource.cutoutPromises.get(modelId)
+    if (existingPromise) return existingPromise
+
+    const promise = (async () => {
       const blob = await task(resource)
+      if (this.resources.get(assetId) !== resource) throw createBackgroundRemovalAbortError()
       const cutoutUrl = URL.createObjectURL(blob)
       try {
-        resource.cutout = await loadImage(cutoutUrl)
-        resource.cutoutUrl = cutoutUrl
-        resource.refinedCutouts = new Map()
+        const image = await loadImage(cutoutUrl)
+        if (this.resources.get(assetId) !== resource) {
+          throw createBackgroundRemovalAbortError()
+        }
+        resource.cutouts.set(modelId, {
+          image,
+          objectUrl: cutoutUrl,
+          refinedCutouts: new Map(),
+          lastAccess: ++this.cutoutAccessCounter,
+        })
+        this.evictCutouts(resource, modelId)
       } catch (error) {
-        URL.revokeObjectURL(cutoutUrl)
+        if (![...resource.cutouts.values()].some((cutout) => cutout.objectUrl === cutoutUrl)) {
+          URL.revokeObjectURL(cutoutUrl)
+        }
         throw error
       }
     })().finally(() => {
-      resource.cutoutPromise = undefined
+      if (resource.cutoutPromises.get(modelId) === promise) resource.cutoutPromises.delete(modelId)
     })
 
-    return resource.cutoutPromise
+    resource.cutoutPromises.set(modelId, promise)
+    return promise
   }
 
   /** 移除一个图片资源并撤销其全部 Object URL，喵~ */
   remove(assetId: string): void {
     const resource = this.resources.get(assetId)
     if (!resource) return
-    URL.revokeObjectURL(resource.objectUrl)
-    if (resource.cutoutUrl) URL.revokeObjectURL(resource.cutoutUrl)
-    resource.refinedCutouts?.forEach((canvas) => {
-      canvas.width = 1
-      canvas.height = 1
-    })
-    resource.refinedCutouts?.clear()
     this.resources.delete(assetId)
+    URL.revokeObjectURL(resource.objectUrl)
+    resource.cutouts.forEach((cutout) => this.releaseCutout(cutout))
+    resource.cutouts.clear()
+    resource.cutoutPromises.clear()
   }
 
   /** 释放资源仓库持有的全部图片对象，喵~ */
@@ -115,6 +153,28 @@ export class H5ResourceStore {
     const { id, name, objectUrl, width, height, size } = resource
     return { id, name, objectUrl, width, height, size }
   }
+
+  /** 淘汰最久未使用的模型结果，同时保护刚写入的结果，喵~ */
+  private evictCutouts(resource: StoredImage, protectedModelId: BackgroundRemovalModelId): void {
+    while (resource.cutouts.size > MAX_CUTOUT_MODELS_PER_RESOURCE) {
+      const candidate = [...resource.cutouts.entries()]
+        .filter(([modelId]) => modelId !== protectedModelId)
+        .sort((left, right) => left[1].lastAccess - right[1].lastAccess)[0]
+      if (!candidate) return
+      this.releaseCutout(candidate[1])
+      resource.cutouts.delete(candidate[0])
+    }
+  }
+
+  /** 释放单个模型结果关联的链接和专业微调画布，喵~ */
+  private releaseCutout(cutout: StoredCutout): void {
+    URL.revokeObjectURL(cutout.objectUrl)
+    cutout.refinedCutouts.forEach((canvas) => {
+      canvas.width = 1
+      canvas.height = 1
+    })
+    cutout.refinedCutouts.clear()
+  }
 }
 
-export type { StoredImage }
+export type { StoredCutout, StoredImage }
