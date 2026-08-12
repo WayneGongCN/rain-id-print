@@ -15,6 +15,7 @@
 2. `.github/workflows/ci.yml` 执行单元测试、类型检查和全量构建。
 3. 质量门禁通过后，通过 Vercel CLI 上传源码，由 Vercel 使用 Preview 环境变量构建并部署 Preview。
 4. 部署携带 `main` 分支和提交 SHA 元数据，便于在 Vercel 中识别和追踪。
+5. 部署成功后，将固定测试域名 `rain-id-print-test.vercel.app` 指向最新的 Preview Deployment。
 
 ### 生产环境
 
@@ -57,7 +58,7 @@ git push origin v1.0.0
 ## 安全边界
 
 - `vercel.json` 中的 `git.deploymentEnabled=false` 是防止 `main` 被 Vercel Git 集成直接发布的关键约束。
-- Production 工作流使用 GitHub `production` Environment，可在 GitHub 中继续增加审批人或部署保护规则。
+- Production 工作流使用 GitHub `Production` Environment，可在 GitHub 中继续增加审批人或部署保护规则。
 - Preview 和 Production 部署分别由 Vercel 注入对应环境的变量，禁止把生产密钥配置到 Preview。
 - 工作流采用源码部署，避免最小权限项目 Token 因 `vercel pull` 读取团队级项目列表而失败。
 - 两个部署工作流均设置 `VERCEL_TELEMETRY_DISABLED=1`，关闭 Vercel CLI 自身的使用遥测。

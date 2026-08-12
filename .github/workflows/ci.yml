@@ -67,11 +67,20 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: 部署测试环境
+        id: deploy
+        run: |
+          deployment_url="$(vercel deploy --yes \
+            --token="${{ secrets.VERCEL_TOKEN }}" \
+            --meta githubDeployment=1 \
+            --meta githubCommitRef="${{ github.ref_name }}" \
+            --meta githubCommitSha="${{ github.sha }}" \
+            --meta githubCommitOrg="${{ github.repository_owner }}" \
+            --meta githubCommitRepo="${{ github.event.repository.name }}")"
+          echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
+
+      - name: 更新固定测试域名
         run: >-
-          vercel deploy --yes
+          vercel alias set
+          "${{ steps.deploy.outputs.url }}"
+          rain-id-print-test.vercel.app
           --token="${{ secrets.VERCEL_TOKEN }}"
-          --meta githubDeployment=1
-          --meta githubCommitRef="${{ github.ref_name }}"
-          --meta githubCommitSha="${{ github.sha }}"
-          --meta githubCommitOrg="${{ github.repository_owner }}"
-          --meta githubCommitRepo="${{ github.event.repository.name }}"

@@ -60,7 +60,7 @@ pnpm build
 项目通过 GitHub Actions 执行质量门禁和 Vercel 部署，Vercel 自带的 Git 自动部署已关闭，避免 `main` 被直接发布到生产环境。
 
 - 生产域名：<https://idprint.rainnear.com>
-- 测试环境：每次推送 `main` 并通过质量门禁后创建新的 Vercel Preview Deployment。
+- 测试环境：每次推送 `main` 并通过质量门禁后创建新的 Vercel Preview Deployment，并将 `rain-id-print-test.vercel.app` 更新到最新部署。
 - 生产环境：推送任意 Git Tag 且该 Tag 对应提交属于 `main` 后发布。
 - Vercel 构建命令：`pnpm build:h5`
 - Vercel 输出目录：`packages/app-h5/dist`
