@@ -66,15 +66,9 @@ jobs:
       - name: 安装 Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: 拉取测试环境配置
-        run: vercel pull --yes --environment=preview --token="${{ secrets.VERCEL_TOKEN }}"
-
-      - name: 构建测试环境产物
-        run: vercel build --token="${{ secrets.VERCEL_TOKEN }}"
-
       - name: 部署测试环境
         run: >-
-          vercel deploy --prebuilt
+          vercel deploy --yes
           --token="${{ secrets.VERCEL_TOKEN }}"
           --meta githubDeployment=1
           --meta githubCommitRef="${{ github.ref_name }}"

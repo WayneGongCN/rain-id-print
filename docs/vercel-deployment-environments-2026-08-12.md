@@ -13,7 +13,7 @@
 
 1. 推送提交到 `main`。
 2. `.github/workflows/ci.yml` 执行单元测试、类型检查和全量构建。
-3. 质量门禁通过后，使用 Preview 环境变量构建并部署 Vercel Preview。
+3. 质量门禁通过后，通过 Vercel CLI 上传源码，由 Vercel 使用 Preview 环境变量构建并部署 Preview。
 4. 部署携带 `main` 分支和提交 SHA 元数据，便于在 Vercel 中识别和追踪。
 
 ### 生产环境
@@ -21,7 +21,7 @@
 1. 在需要发布的 `main` 提交上创建并推送 Git Tag。
 2. `.github/workflows/deploy-production.yml` 验证 Tag 对应提交属于远端 `main`。
 3. 工作流重新执行单元测试和类型检查。
-4. 使用 Production 环境变量构建并通过 `vercel deploy --prod` 发布生产环境。
+4. 通过 Vercel CLI 上传源码，由 Vercel 使用 Production 环境变量构建并通过 `vercel deploy --prod` 发布生产环境。
 
 ## 必需的远端配置
 
@@ -58,6 +58,7 @@ git push origin v1.0.0
 
 - `vercel.json` 中的 `git.deploymentEnabled=false` 是防止 `main` 被 Vercel Git 集成直接发布的关键约束。
 - Production 工作流使用 GitHub `production` Environment，可在 GitHub 中继续增加审批人或部署保护规则。
-- Preview 和 Production 分别拉取各自的 Vercel 环境变量，禁止把生产密钥配置到 Preview。
+- Preview 和 Production 部署分别由 Vercel 注入对应环境的变量，禁止把生产密钥配置到 Preview。
+- 工作流采用源码部署，避免最小权限项目 Token 因 `vercel pull` 读取团队级项目列表而失败。
 - 两个部署工作流均设置 `VERCEL_TELEMETRY_DISABLED=1`，关闭 Vercel CLI 自身的使用遥测。
 - 所有新增遥测能力都必须受 `VITE_TELEMETRY_ENABLED` 总开关约束，并保持测试环境关闭。
