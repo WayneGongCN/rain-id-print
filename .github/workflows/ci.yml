@@ -72,6 +72,7 @@ jobs:
         run: |
           deployment_url="$(vercel deploy --yes \
             --token="$VERCEL_TOKEN" \
+            --build-env VITE_TELEMETRY_ENABLED="$VITE_TELEMETRY_ENABLED" \
             --meta githubDeployment=1 \
             --meta githubCommitRef="${{ github.ref_name }}" \
             --meta githubCommitSha="${{ github.sha }}" \

@@ -21,6 +21,7 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TELEMETRY_DISABLED: '1'
       VITE_TELEMETRY_ENABLED: 'true'
     steps:
@@ -64,7 +65,8 @@ jobs:
       - name: 部署生产环境
         run: >-
           vercel deploy --yes --prod
-          --token="${{ secrets.VERCEL_TOKEN }}"
+          --token="$VERCEL_TOKEN"
+          --build-env VITE_TELEMETRY_ENABLED="$VITE_TELEMETRY_ENABLED"
           --meta githubDeployment=1
           --meta githubCommitRef=main
           --meta githubCommitSha="${{ steps.release.outputs.commit_sha }}"

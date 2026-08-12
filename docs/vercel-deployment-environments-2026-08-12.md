@@ -59,7 +59,7 @@ git push origin v1.0.0
 
 - `vercel.json` 中的 `git.deploymentEnabled=false` 是防止 `main` 被 Vercel Git 集成直接发布的关键约束。
 - Production 工作流使用 GitHub `Production` Environment，可在 GitHub 中继续增加审批人或部署保护规则。
-- Preview 和 Production 部署分别由 Vercel 注入对应环境的变量，禁止把生产密钥配置到 Preview。
+- Preview 和 Production 部署分别由 Vercel 注入对应环境的变量，工作流通过 `--build-env` 将遥测总开关固定为 Preview 关闭、Production 开启；禁止把生产密钥配置到 Preview。
 - 工作流采用源码部署，避免最小权限项目 Token 因 `vercel pull` 读取团队级项目列表而失败。
 - 两个部署工作流均设置 `VERCEL_TELEMETRY_DISABLED=1`，关闭 Vercel CLI 自身的使用遥测。
 - 所有新增遥测能力都必须受 `VITE_TELEMETRY_ENABLED` 总开关约束，并保持测试环境关闭。
