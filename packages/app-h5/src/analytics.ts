@@ -11,6 +11,28 @@ interface AnalyticsEventMap {
   layout_mode_change: {
     layout_mode: 'single' | 'mixed'
   }
+  editor_step_change: {
+    from_step: 'process' | 'crop' | 'layout'
+    to_step: 'process' | 'crop' | 'layout'
+  }
+  photo_spec_change: {
+    spec_id: string
+  }
+  photo_crop_reset: {
+    spec_id: string
+  }
+  photo_spec_export: {
+    spec_id: string
+    export_dpi: number
+    pixel_width: number
+    pixel_height: number
+    background_mode: 'keep' | 'white' | 'blue' | 'red' | 'gray'
+  }
+  photo_spec_export_error: {
+    spec_id: string
+    export_dpi: number
+    failure_stage: 'render'
+  }
   background_change: {
     background_mode: 'keep' | 'white' | 'blue' | 'red' | 'gray'
   }

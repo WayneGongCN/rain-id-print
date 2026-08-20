@@ -1,4 +1,4 @@
-import { assertLayoutDimensions, computeCoverCrop, mmToPixels } from './geometry'
+import { assertLayoutDimensions, computeCoverCrop, mmToPixels, normalizeAndValidateCrop } from './geometry'
 import type { LayoutItem, LayoutPlan, LayoutRequest, PaperOrientation, PhotoLayoutInput, SizeMm } from './types'
 
 interface PackInput extends SizeMm {
@@ -157,10 +157,16 @@ export function createMixedPhotoLayout(request: LayoutRequest): LayoutPlan {
     y: item.y,
     width: item.width,
     height: item.height,
-    crop: computeCoverCrop(
-      { width: item.photo.sourceWidthPx, height: item.photo.sourceHeightPx },
-      { width: item.width, height: item.height },
-    ),
+    crop: item.photo.crop
+      ? normalizeAndValidateCrop(
+          item.photo.crop,
+          { width: item.photo.sourceWidthPx, height: item.photo.sourceHeightPx },
+          { width: item.width, height: item.height },
+        )
+      : computeCoverCrop(
+          { width: item.photo.sourceWidthPx, height: item.photo.sourceHeightPx },
+          { width: item.width, height: item.height },
+        ),
     background: item.photo.background,
   }))
 

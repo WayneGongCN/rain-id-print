@@ -3,13 +3,13 @@ export function SeoIntro() {
   return (
     <section className="intro-panel" aria-labelledby="page-title">
       <div className="eyebrow">FREE · PRIVATE · PRINT-READY · CUSTOM DPI</div>
-      <h1 id="page-title">免费在线证件照排版，<br /><em>排得刚刚好。</em></h1>
+      <h1 id="page-title">免费制作规格证件照，<br /><em>免注册隐私优先！</em></h1>
       <div className="intro-copy">
-        <p>一键换底、多尺寸混排、6 寸相纸与 A4 冲印级导出。无需注册，照片不上传服务器，隐私留在你的设备。</p>
-        <a className="intro-action" href="#editor">开始排版</a>
+        <p>一键换底、基础裁切、单张规格照下载与多尺寸冲印排版。无需注册，本地处理照片不上传服务器，隐私留在你的设备。</p>
+        <a className="intro-action" href="#editor">开始制作</a>
       </div>
       <div className="feature-row" aria-label="核心能力">
-        <span>本地智能抠图</span><span>毫米级排版</span><span>多照片混排</span>
+        <span>本地智能抠图</span><span>规格照裁切导出</span><span>多照片混排</span>
       </div>
     </section>
   )
@@ -21,14 +21,14 @@ export function SeoDetails() {
     <section className="seo-details" aria-labelledby="seo-details-title">
       <div className="seo-heading">
         <span>HOW IT WORKS</span>
-        <h2 id="seo-details-title">三步生成自定义 DPI 证件照冲印图</h2>
-        <p>从本地照片到可打印排版图，全程在当前浏览器中完成。</p>
+        <h2 id="seo-details-title">三步制作规格照片并完成冲印排版</h2>
+        <p>从本地照片到单张规格照和可打印排版图，全程在当前浏览器中完成。</p>
       </div>
 
       <ol id="how-it-works" className="steps-grid">
-        <li><b>01</b><h3>添加本地照片</h3><p>支持 JPEG、PNG 和 WebP，可一次添加多个人或多种尺寸。</p></li>
-        <li><b>02</b><h3>选择证件规格与纸张</h3><p>选择一寸、护照、身份证等业务规格，再选择 6 寸（4R）、A4 等输出纸张。</p></li>
-        <li><b>03</b><h3>预览并导出</h3><p>调整底色、数量、间距、分隔线和输出精度，导出带正确 DPI 元数据的 JPEG。</p></li>
+        <li><b>01</b><h3>添加并处理照片</h3><p>支持 JPEG、PNG 和 WebP，在本地完成换底和边缘微调。</p></li>
+        <li><b>02</b><h3>选择规格并裁切</h3><p>选择一寸、护照、身份证等业务规格，拖动和缩放后可直接下载单张 JPEG。</p></li>
+        <li><b>03</b><h3>纸张排版并导出</h3><p>选择 6 寸（4R）、A4 等纸张，调整数量、间距和精度后生成冲印图。</p></li>
       </ol>
 
       <div className="seo-info-grid">
@@ -62,7 +62,11 @@ export function SeoDetails() {
           </details>
           <details>
             <summary>可以自定义导出图片的 DPI 吗？</summary>
-            <p>可以。工具默认使用常见的 300 DPI，并会根据所选证件规格提高建议值；你也可以在 72–600 DPI 范围内自定义，工具会按纸张毫米尺寸生成对应像素并写入 JPEG。</p>
+            <p>可以。单张规格照和整张冲印图分别保存自己的 DPI 设置，可在 72–600 DPI 范围内自定义，工具会按毫米尺寸生成对应像素并写入 JPEG。</p>
+          </details>
+          <details>
+            <summary>可以只下载裁切后的单张规格照片吗？</summary>
+            <p>可以。在“规格与裁切”步骤选择业务规格、调整缩放和位置后即可下载当前照片，无需先完成纸张排版。</p>
           </details>
           <details>
             <summary>证件规格能保证通过官方审核吗？</summary>

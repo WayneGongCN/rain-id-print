@@ -1,4 +1,4 @@
-import type { BackgroundMode, BackgroundTuning, LayoutPlan } from '@rainnear/core'
+import type { BackgroundMode, BackgroundTuning, LayoutPlan, PhotoOutputPlan } from '@rainnear/core'
 
 export interface H5ImageAsset {
   id: string
@@ -9,11 +9,15 @@ export interface H5ImageAsset {
   size: number
 }
 
-export interface RenderOptions {
-  separatorColor: string
+export interface ImageRenderOptions {
   backgroundRemovalModelId: BackgroundRemovalModelId
   previewMaxEdge?: number
   maxExportPixels?: number
+  backgroundTuning?: BackgroundTuning
+}
+
+export interface RenderOptions extends ImageRenderOptions {
+  separatorColor: string
   backgroundTunings?: ReadonlyMap<string, BackgroundTuning>
 }
 
@@ -84,6 +88,18 @@ export interface H5Platform {
   ): Promise<void>
 
   /**
+   * 将单张业务规格照片绘制为轻量预览，喵~
+   * @param canvas 页面持有的预览画布，喵~
+   * @param plan 单张业务规格照片输出计划，喵~
+   * @param options 单张图片渲染配置，喵~
+   */
+  renderPhotoPreview(
+    canvas: HTMLCanvasElement,
+    plan: PhotoOutputPlan,
+    options: ImageRenderOptions,
+  ): Promise<void>
+
+  /**
    * 生成带正确 DPI 元数据的 JPEG，Promise 在浏览器编码完成后返回 Blob，喵~
    * @param plan 平台无关的布局计划，喵~
    * @param backgrounds 每张资源当前选择的背景模式，喵~
@@ -94,6 +110,13 @@ export interface H5Platform {
     backgrounds: ReadonlyMap<string, BackgroundMode>,
     options: RenderOptions,
   ): Promise<Blob>
+
+  /**
+   * 将单张业务规格照片导出为带正确 DPI 的 JPEG，喵~
+   * @param plan 单张业务规格照片输出计划，喵~
+   * @param options 单张图片渲染配置，喵~
+   */
+  exportPhotoJpeg(plan: PhotoOutputPlan, options: ImageRenderOptions): Promise<Blob>
 
   /**
    * 触发浏览器保存文件并在完成同步触发后返回，喵~

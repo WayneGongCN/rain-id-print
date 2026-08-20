@@ -1,4 +1,4 @@
-import { assertLayoutDimensions, computeCoverCrop, mmToPixels } from './geometry'
+import { assertLayoutDimensions, computeCoverCrop, mmToPixels, normalizeAndValidateCrop } from './geometry'
 import type { LayoutItem, LayoutPlan, LayoutRequest, PaperOrientation, PhotoLayoutInput, SizeMm } from './types'
 
 interface GridCandidate {
@@ -95,10 +95,11 @@ function compareCandidates(left: GridCandidate, right: GridCandidate): number {
 
 /** 根据候选网格生成逐行居中的照片坐标，喵~ */
 function createGridItems(candidate: GridCandidate, photo: PhotoLayoutInput): LayoutItem[] {
-  const crop = computeCoverCrop(
-    { width: photo.sourceWidthPx, height: photo.sourceHeightPx },
-    { width: photo.width, height: photo.height },
-  )
+  const source = { width: photo.sourceWidthPx, height: photo.sourceHeightPx }
+  const target = { width: photo.width, height: photo.height }
+  const crop = photo.crop
+    ? normalizeAndValidateCrop(photo.crop, source, target)
+    : computeCoverCrop(source, target)
   const totalRows = Math.ceil(candidate.count / candidate.cols)
   const blockHeight = totalRows * photo.height + Math.max(0, totalRows - 1) * candidate.gapMm
   const yStart = (candidate.paper.height - blockHeight) / 2

@@ -41,9 +41,17 @@ export function createH5Platform(options: H5PlatformOptions = {}): H5Platform {
     async renderPreview(canvas, plan, backgrounds, options) {
       return renderer.renderPreview(canvas, plan, backgrounds, options)
     },
+    /** 将单张业务规格照片绘制为低分辨率预览，喵~ */
+    async renderPhotoPreview(canvas, plan, options) {
+      return renderer.renderPhotoPreview(canvas, plan, options)
+    },
     /** 将布局计划导出为带目标 DPI 的 JPEG，喵~ */
     async exportJpeg(plan, backgrounds, options) {
       return renderer.exportJpeg(plan, backgrounds, options)
+    },
+    /** 将单张业务规格照片导出为带目标 DPI 的 JPEG，喵~ */
+    async exportPhotoJpeg(plan, options) {
+      return renderer.exportPhotoJpeg(plan, options)
     },
     /** 通过临时链接触发浏览器下载，喵~ */
     download(blob, filename) {

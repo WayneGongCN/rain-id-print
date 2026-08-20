@@ -5,12 +5,14 @@ import {
   type BackgroundMode,
   type BackgroundTuning,
   type LayoutPlan,
+  type NormalizedCrop,
+  type PhotoOutputPlan,
 } from '@rainnear/core'
 import { patchJpegDpi } from './jpeg-dpi'
 import { refineRgbaPixels, type RgbColor } from './matte-refinement'
 import type { StoredCutout, StoredImage } from './resource-store'
 import { H5ResourceStore } from './resource-store'
-import type { RenderOptions } from './types'
+import type { ImageRenderOptions, RenderOptions } from './types'
 
 const BACKGROUND_COLORS: Record<Exclude<BackgroundMode, 'keep'>, string> = {
   white: '#ffffff',
@@ -131,7 +133,7 @@ function drawPhoto(
   context: CanvasRenderingContext2D,
   source: DrawableSource,
   background: BackgroundMode,
-  crop: LayoutPlan['items'][number]['crop'],
+  crop: NormalizedCrop,
   destination: { x: number; y: number; width: number; height: number },
 ): void {
   const sourceSize = getSourceSize(source)
@@ -172,22 +174,107 @@ export class H5CanvasRenderer {
     this.draw(canvas, plan, backgrounds, options, width, height)
   }
 
+  /** 按最大边限制绘制单张业务规格照片预览，喵~ */
+  async renderPhotoPreview(
+    canvas: HTMLCanvasElement,
+    plan: PhotoOutputPlan,
+    options: ImageRenderOptions,
+  ): Promise<void> {
+    const maxEdge = options.previewMaxEdge ?? 1200
+    const scale = Math.min(maxEdge / Math.max(plan.pixelSize.width, plan.pixelSize.height), 1)
+    const width = Math.max(1, Math.round(plan.pixelSize.width * scale))
+    const height = Math.max(1, Math.round(plan.pixelSize.height * scale))
+    this.drawPhotoOutput(canvas, plan, options, width, height)
+  }
+
   /** 按布局 DPI 创建最终画布并写入正确 JPEG 密度元数据，喵~ */
   async exportJpeg(
     plan: LayoutPlan,
     backgrounds: ReadonlyMap<string, BackgroundMode>,
     options: RenderOptions,
   ): Promise<Blob> {
-    const pixels = plan.pixelSize.width * plan.pixelSize.height
-    const limit = options.maxExportPixels ?? 25_000_000
-    if (pixels > limit) throw new RangeError(`输出尺寸 ${(pixels / 1_000_000).toFixed(1)}MP 超过 H5 ${Math.round(limit / 1_000_000)}MP 上限`)
-
+    this.assertPixelLimit(plan.pixelSize.width, plan.pixelSize.height, options.maxExportPixels)
     const canvas = document.createElement('canvas')
-    this.draw(canvas, plan, backgrounds, options, plan.pixelSize.width, plan.pixelSize.height)
-    const jpeg = await canvasToJpeg(canvas)
-    canvas.width = 1
-    canvas.height = 1
-    return patchJpegDpi(jpeg, plan.dpi)
+    try {
+      this.draw(canvas, plan, backgrounds, options, plan.pixelSize.width, plan.pixelSize.height)
+      return patchJpegDpi(await canvasToJpeg(canvas), plan.dpi)
+    } finally {
+      canvas.width = 1
+      canvas.height = 1
+    }
+  }
+
+  /** 按业务规格像素导出单张照片并写入 JPEG 密度元数据，喵~ */
+  async exportPhotoJpeg(plan: PhotoOutputPlan, options: ImageRenderOptions): Promise<Blob> {
+    this.assertPixelLimit(plan.pixelSize.width, plan.pixelSize.height, options.maxExportPixels)
+    const canvas = document.createElement('canvas')
+    try {
+      this.drawPhotoOutput(canvas, plan, options, plan.pixelSize.width, plan.pixelSize.height)
+      return patchJpegDpi(await canvasToJpeg(canvas), plan.dpi)
+    } finally {
+      canvas.width = 1
+      canvas.height = 1
+    }
+  }
+
+  /** 校验最终画布像素数量不会超过浏览器安全上限，喵~ */
+  private assertPixelLimit(width: number, height: number, configuredLimit?: number): void {
+    const pixels = width * height
+    const limit = configuredLimit ?? 25_000_000
+    if (pixels > limit) {
+      throw new RangeError(`输出尺寸 ${(pixels / 1_000_000).toFixed(1)}MP 超过 H5 ${Math.round(limit / 1_000_000)}MP 上限`)
+    }
+  }
+
+  /** 读取照片资源并根据背景模式返回原图或微调后的透明前景，喵~ */
+  private resolveDrawableSource(
+    photoId: string,
+    background: BackgroundMode,
+    crop: NormalizedCrop,
+    destination: { width: number; height: number },
+    options: ImageRenderOptions,
+    tuning?: BackgroundTuning,
+  ): DrawableSource {
+    const resource = this.store.get(photoId)
+    if (background === 'keep') return resource.image
+    const requiredMaxDimension = Math.ceil(Math.max(
+      destination.width / crop.width,
+      destination.height / crop.height,
+    ))
+    return getRefinedCutout(
+      resource,
+      this.store.getCutout(photoId, options.backgroundRemovalModelId),
+      tuning,
+      requiredMaxDimension,
+    )
+  }
+
+  /** 将单张输出计划绘制到指定分辨率画布且不添加分隔线，喵~ */
+  private drawPhotoOutput(
+    canvas: HTMLCanvasElement,
+    plan: PhotoOutputPlan,
+    options: ImageRenderOptions,
+    width: number,
+    height: number,
+  ): void {
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d', { alpha: false })
+    if (!context) throw new Error('当前浏览器不支持 Canvas 2D')
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, width, height)
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = 'high'
+    const destination = { x: 0, y: 0, width, height }
+    const source = this.resolveDrawableSource(
+      plan.item.photoId,
+      plan.item.background,
+      plan.item.crop,
+      destination,
+      options,
+      options.backgroundTuning,
+    )
+    drawPhoto(context, source, plan.item.background, plan.item.crop, destination)
   }
 
   /** 使用统一毫米坐标在任意输出分辨率下绘制纸张和照片，喵~ */
@@ -212,7 +299,6 @@ export class H5CanvasRenderer {
     const scaleY = height / plan.paper.height
 
     plan.items.forEach((item) => {
-      const resource = this.store.get(item.photoId)
       const destination = {
         x: Math.round(item.x * scaleX),
         y: Math.round(item.y * scaleY),
@@ -220,18 +306,14 @@ export class H5CanvasRenderer {
         height: Math.max(1, Math.round(item.height * scaleY)),
       }
       const background = backgrounds.get(item.photoId) ?? item.background
-      const requiredMaxDimension = Math.ceil(Math.max(
-        destination.width / item.crop.width,
-        destination.height / item.crop.height,
-      ))
-      const source = background === 'keep'
-        ? resource.image
-        : getRefinedCutout(
-            resource,
-            this.store.getCutout(item.photoId, options.backgroundRemovalModelId),
-            options.backgroundTunings?.get(item.photoId),
-            requiredMaxDimension,
-          )
+      const source = this.resolveDrawableSource(
+        item.photoId,
+        background,
+        item.crop,
+        destination,
+        options,
+        options.backgroundTunings?.get(item.photoId),
+      )
       drawPhoto(context, source, background, item.crop, destination)
       context.strokeStyle = options.separatorColor
       context.lineWidth = Math.max(1, mmToPixels(0.1, plan.dpi) * (width / plan.pixelSize.width))

@@ -48,6 +48,29 @@ export interface PhotoLayoutInput extends SizeMm {
   sourceHeightPx: number
   copies: number
   background: BackgroundMode
+  crop?: NormalizedCrop
+}
+
+export interface PhotoOutputRequest {
+  photoId: string
+  sourceWidthPx: number
+  sourceHeightPx: number
+  spec: PhotoSpec
+  dpi: number
+  crop: NormalizedCrop
+  background: BackgroundMode
+}
+
+export interface PhotoOutputPlan {
+  version: 1
+  dpi: number
+  physicalSize: SizeMm
+  pixelSize: SizeMm
+  item: {
+    photoId: string
+    crop: NormalizedCrop
+    background: BackgroundMode
+  }
 }
 
 export interface LayoutRequest {

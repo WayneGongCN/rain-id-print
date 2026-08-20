@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { computeCoverCrop, createLayout, mmToPixels, type LayoutRequest } from '../src'
+import {
+  computeCoverCrop,
+  createLayout,
+  createPhotoOutputPlan,
+  createZoomedCrop,
+  getCropZoom,
+  mmToPixels,
+  retargetCrop,
+  translateCrop,
+  type LayoutRequest,
+} from '../src'
 
 const basePhoto = {
   id: 'alice',
@@ -39,6 +49,40 @@ describe('geometry', () => {
       height: 1,
     })
   })
+
+  it('按焦点缩放和平移裁切框且不允许越界', () => {
+    const source = { width: 1200, height: 1600 }
+    const target = { width: 25, height: 35 }
+    const crop = createZoomedCrop(source, target, { x: 0.4, y: 0.6 }, 2)
+
+    expect(getCropZoom(source, target, crop)).toBeCloseTo(2)
+    expect(translateCrop(crop, -10, 10)).toMatchObject({ x: 0, y: 1 - crop.height })
+  })
+
+  it('切换目标规格时保留焦点和相对缩放', () => {
+    const source = { width: 1200, height: 1600 }
+    const oldTarget = { width: 25, height: 35 }
+    const newTarget = { width: 51, height: 51 }
+    const crop = createZoomedCrop(source, oldTarget, { x: 0.45, y: 0.55 }, 1.8)
+    const retargeted = retargetCrop(source, oldTarget, newTarget, crop)
+
+    expect(getCropZoom(source, newTarget, retargeted)).toBeCloseTo(1.8)
+    expect(retargeted.x + retargeted.width / 2).toBeCloseTo(0.45)
+    expect(retargeted.y + retargeted.height / 2).toBeCloseTo(0.55)
+  })
+
+  it('拒绝非法缩放和比例不一致的裁切框', () => {
+    expect(() => createZoomedCrop(
+      { width: 1200, height: 1600 },
+      { width: 25, height: 35 },
+      { x: 0.5, y: 0.5 },
+      5,
+    )).toThrow('1–4')
+
+    expect(() => createLayout(createSingleRequest({
+      photos: [{ ...basePhoto, crop: { x: 0, y: 0, width: 1, height: 1 } }],
+    }))).toThrow('比例不一致')
+  })
 })
 
 describe('single layout', () => {
@@ -64,6 +108,18 @@ describe('single layout', () => {
     const plan = createLayout(createSingleRequest({ targetCount: 100 }))
     expect(plan.placedCount).toBeLessThan(100)
     expect(plan.rejected[0]?.count).toBe(100 - plan.placedCount)
+  })
+
+  it('将照片自定义裁切框复用到全部排版副本', () => {
+    const crop = createZoomedCrop(
+      { width: basePhoto.sourceWidthPx, height: basePhoto.sourceHeightPx },
+      { width: basePhoto.width, height: basePhoto.height },
+      { x: 0.4, y: 0.6 },
+      2,
+    )
+    const plan = createLayout(createSingleRequest({ photos: [{ ...basePhoto, crop }] }))
+
+    expect(plan.items.every((item) => JSON.stringify(item.crop) === JSON.stringify(crop))).toBe(true)
   })
 })
 
@@ -93,5 +149,86 @@ describe('mixed layout', () => {
       dpi: 300,
     }
     expect(createLayout(request)).toEqual(createLayout(request))
+  })
+
+  it('为不同照片保留各自的裁切框', () => {
+    const firstCrop = createZoomedCrop(
+      { width: 1200, height: 1600 },
+      { width: 25, height: 35 },
+      { x: 0.4, y: 0.5 },
+      2,
+    )
+    const secondCrop = createZoomedCrop(
+      { width: 1200, height: 1600 },
+      { width: 35, height: 49 },
+      { x: 0.6, y: 0.5 },
+      1.5,
+    )
+    const plan = createLayout({
+      mode: 'mixed',
+      paper,
+      photos: [
+        { ...basePhoto, copies: 1, crop: firstCrop },
+        { ...basePhoto, id: 'bob', width: 35, height: 49, copies: 1, crop: secondCrop },
+      ],
+      gapMm: 2,
+      dpi: 300,
+    })
+
+    expect(plan.items.find((item) => item.photoId === 'alice')?.crop).toEqual(firstCrop)
+    expect(plan.items.find((item) => item.photoId === 'bob')?.crop).toEqual(secondCrop)
+  })
+})
+
+describe('photo output', () => {
+  it('按业务规格毫米尺寸和 DPI 创建单张输出计划', () => {
+    const crop = computeCoverCrop({ width: 1200, height: 1600 }, { width: 25, height: 35 })
+    const plan = createPhotoOutputPlan({
+      photoId: 'alice',
+      sourceWidthPx: 1200,
+      sourceHeightPx: 1600,
+      spec: {
+        id: 'one-inch',
+        name: '一寸',
+        width: 25,
+        height: 35,
+        category: 'photo',
+        group: 'common-size',
+        recommendedDpi: 300,
+      },
+      dpi: 300,
+      crop,
+      background: 'white',
+    })
+
+    expect(plan.pixelSize).toEqual({ width: 295, height: 413 })
+    expect(plan.item).toEqual({ photoId: 'alice', crop, background: 'white' })
+  })
+
+  it('拒绝非法 DPI 和比例错误的裁切', () => {
+    const request = {
+      photoId: 'alice',
+      sourceWidthPx: 1200,
+      sourceHeightPx: 1600,
+      spec: {
+        id: 'one-inch',
+        name: '一寸',
+        width: 25,
+        height: 35,
+        category: 'photo' as const,
+        group: 'common-size' as const,
+        recommendedDpi: 300,
+      },
+      dpi: 0,
+      crop: computeCoverCrop({ width: 1200, height: 1600 }, { width: 25, height: 35 }),
+      background: 'keep' as const,
+    }
+
+    expect(() => createPhotoOutputPlan(request)).toThrow('DPI')
+    expect(() => createPhotoOutputPlan({
+      ...request,
+      dpi: 300,
+      crop: { ...request.crop, width: request.crop.width / 2 },
+    })).toThrow('比例不一致')
   })
 })

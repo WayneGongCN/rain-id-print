@@ -162,6 +162,31 @@ describe('trackAnalyticsEvent', () => {
     ])
   })
 
+  it('记录规格照片导出且不包含文件名或资源标识', () => {
+    const { fakeWindow } = installBrowser()
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true })
+
+    trackAnalyticsEvent('photo_spec_export', {
+      spec_id: 'one-inch',
+      export_dpi: 300,
+      pixel_width: 295,
+      pixel_height: 413,
+      background_mode: 'white',
+    })
+
+    expect(readDataLayer(fakeWindow).at(-1)).toEqual([
+      'event',
+      'photo_spec_export',
+      {
+        spec_id: 'one-inch',
+        export_dpi: 300,
+        pixel_width: 295,
+        pixel_height: 413,
+        background_mode: 'white',
+      },
+    ])
+  })
+
   it('GA 未初始化时发送事件不会抛错或创建队列', () => {
     const { fakeWindow } = installBrowser('localhost')
 
