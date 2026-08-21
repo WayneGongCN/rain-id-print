@@ -122,7 +122,7 @@ export const PAPER_SPECS: readonly PaperSpec[] = [
   { id: 'a3', name: 'A3', width: 297, height: 420, category: 'paper' },
 ]
 
-/** 根据规格标识读取证件照尺寸，喵~ */
+/** 根据规格标识读取内置证件照预设，不包含应用会话创建的自定义规格，喵~ */
 export function getPhotoSpec(id: string): PhotoSpec | undefined {
   return PHOTO_SPECS.find((spec) => spec.id === id)
 }

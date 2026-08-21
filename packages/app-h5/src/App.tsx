@@ -7,7 +7,6 @@ import {
   createPhotoOutputPlan,
   getCropZoom,
   getPaperSpec,
-  getPhotoSpec,
   isValidCrop,
   normalizeBackgroundTuning,
   zoomCropAtPoint,
@@ -16,6 +15,7 @@ import {
   type LayoutPlan,
   type PhotoLayoutInput,
   type PhotoOutputPlan,
+  type PhotoSpec,
 } from '@rainnear/core'
 import { createH5Platform, type BackgroundProgress, type BackgroundRemovalModelId } from '@rainnear/plateform-h5'
 import alipayRewardCode from './assets/alipay-reward-code.jpg'
@@ -35,6 +35,7 @@ import {
 import { SeoDetails, SeoIntro } from './SeoContent'
 import { trackAnalyticsEvent } from './analytics'
 import { CropCanvas } from './CropCanvas'
+import { formatPhotoSpecLabel, getAnalyticsPhotoSpecId, resolveCustomPhotoSpec } from './custom-photo-spec'
 import { EditorStepper } from './EditorStepper'
 import { LayoutStep } from './LayoutStep'
 import { PhotoProcessStep } from './PhotoProcessStep'
@@ -44,14 +45,12 @@ import { createInitialAppPhoto, createPhotoDownloadFilename, retargetAppPhoto } 
 
 /** 将平台图片和照片级裁切状态转换为核心布局输入，喵~ */
 function toLayoutInput(photo: AppPhoto): PhotoLayoutInput {
-  const spec = getPhotoSpec(photo.presetId) ?? PHOTO_SPECS[0]
-  if (!spec) throw new Error('缺少默认照片规格')
   return {
     id: photo.id,
     sourceWidthPx: photo.width,
     sourceHeightPx: photo.height,
-    width: spec.width,
-    height: spec.height,
+    width: photo.spec.width,
+    height: photo.spec.height,
     copies: photo.copies,
     background: photo.background,
     crop: photo.crop,
@@ -83,6 +82,7 @@ export function App() {
   const modelSwitchAbortRef = useRef<AbortController | null>(null)
   const modelSwitchVersionRef = useRef(0)
   const [photos, setPhotos] = useState<AppPhoto[]>([])
+  const [customPhotoSpecs, setCustomPhotoSpecs] = useState<PhotoSpec[]>([])
   const [mode, setMode] = useState<UploadMode>('single')
   const [currentStep, setCurrentStep] = useState<EditorStep>('process')
   const [maxUnlockedStep, setMaxUnlockedStep] = useState(1)
@@ -110,7 +110,7 @@ export function App() {
   const isModelSwitching = pendingBackgroundRemovalModelId !== null
   const currentModel = platform.backgroundRemovalModels.find((model) => model.id === backgroundRemovalModelId)
   const activePhoto = photos.find((photo) => photo.id === activePhotoId) ?? photos[0] ?? null
-  const activePhotoSpec = activePhoto ? getPhotoSpec(activePhoto.presetId) : undefined
+  const activePhotoSpec = activePhoto?.spec
   const recommendedExportDpi = useMemo(() => getRecommendedExportDpi(photos, mode), [mode, photos])
 
   const layout = useMemo<LayoutPlan | null>(() => {
@@ -366,16 +366,30 @@ export function App() {
     trackAnalyticsEvent('editor_step_change', { from_step: previousStep, to_step: 'layout' })
   }
 
-  /** 更新业务预设并保留视觉焦点和相对缩放，喵~ */
-  function changePhotoPreset(photoId: string, presetId: string): void {
+  /** 应用照片规格并保留视觉焦点、相对缩放和更高的既有 DPI，喵~ */
+  function applyPhotoSpec(photoId: string, spec: PhotoSpec): void {
     const photo = photos.find((item) => item.id === photoId)
-    const spec = getPhotoSpec(presetId)
-    if (!photo || !spec || photo.presetId === spec.id) return
-    const updated = retargetAppPhoto(photo, presetId)
+    if (!photo || photo.spec.id === spec.id) return
+    const updated = retargetAppPhoto(photo, spec)
     setPhotos((current) => current.map((item) => item.id === photoId ? updated : item))
     setPhotoDpiInputs((current) => ({ ...current, [photoId]: String(updated.outputDpi) }))
     if (mode === 'mixed' || photos[0]?.id === photoId) setExportDpi((current) => raiseExportDpi(current, spec.recommendedDpi))
-    trackAnalyticsEvent('photo_spec_change', { spec_id: presetId })
+    trackAnalyticsEvent('photo_spec_change', { spec_id: getAnalyticsPhotoSpecId(spec) })
+  }
+
+  /** 从内置与会话规格中选择目标规格，喵~ */
+  function changePhotoSpec(photoId: string, specId: string): void {
+    const spec = [...PHOTO_SPECS, ...customPhotoSpecs].find((item) => item.id === specId)
+    if (spec) applyPhotoSpec(photoId, spec)
+  }
+
+  /** 创建或复用会话自定义规格并仅应用到当前照片，喵~ */
+  function applyCustomPhotoSize(photoId: string, width: number, height: number): void {
+    const { spec, isNew } = resolveCustomPhotoSpec(customPhotoSpecs, width, height)
+    if (isNew) {
+      setCustomPhotoSpecs((current) => current.some((item) => item.id === spec.id) ? current : [...current, spec])
+    }
+    applyPhotoSpec(photoId, spec)
   }
 
   /** 更新照片规格成片 DPI，非法输入保留最后有效值，喵~ */
@@ -388,12 +402,11 @@ export function App() {
   /** 围绕当前裁切焦点修改照片缩放倍数，喵~ */
   function changePhotoZoom(photoId: string, zoom: number): void {
     const photo = photos.find((item) => item.id === photoId)
-    const spec = photo ? getPhotoSpec(photo.presetId) : undefined
-    if (!photo || !spec) return
+    if (!photo) return
     updatePhoto(photoId, {
       crop: zoomCropAtPoint(
         { width: photo.width, height: photo.height },
-        spec,
+        photo.spec,
         photo.crop,
         zoom,
         { x: 0.5, y: 0.5 },
@@ -404,10 +417,9 @@ export function App() {
   /** 将照片恢复为当前规格的居中裁切，喵~ */
   function resetPhotoCrop(photoId: string): void {
     const photo = photos.find((item) => item.id === photoId)
-    const spec = photo ? getPhotoSpec(photo.presetId) : undefined
-    if (!photo || !spec) return
-    updatePhoto(photoId, { crop: computeCoverCrop({ width: photo.width, height: photo.height }, spec) })
-    trackAnalyticsEvent('photo_crop_reset', { spec_id: spec.id })
+    if (!photo) return
+    updatePhoto(photoId, { crop: computeCoverCrop({ width: photo.width, height: photo.height }, photo.spec) })
+    trackAnalyticsEvent('photo_crop_reset', { spec_id: getAnalyticsPhotoSpecId(photo.spec) })
   }
 
   /** 在用户输入有效整数时实时更新排版，喵~ */
@@ -495,9 +507,9 @@ export function App() {
     try {
       const blob = await platform.exportPhotoJpeg(photoOutputPlan, { backgroundRemovalModelId, backgroundTuning: activePhoto.tuning, maxExportPixels: MAX_H5_EXPORT_PIXELS })
       platform.download(blob, createPhotoDownloadFilename(activePhoto, activePhotoSpec))
-      trackAnalyticsEvent('photo_spec_export', { spec_id: activePhotoSpec.id, export_dpi: activePhoto.outputDpi, pixel_width: photoOutputPlan.pixelSize.width, pixel_height: photoOutputPlan.pixelSize.height, background_mode: activePhoto.background })
+      trackAnalyticsEvent('photo_spec_export', { spec_id: getAnalyticsPhotoSpecId(activePhotoSpec), export_dpi: activePhoto.outputDpi, pixel_width: photoOutputPlan.pixelSize.width, pixel_height: photoOutputPlan.pixelSize.height, background_mode: activePhoto.background })
     } catch (error) {
-      trackAnalyticsEvent('photo_spec_export_error', { spec_id: activePhotoSpec.id, export_dpi: activePhoto.outputDpi, failure_stage: 'render' })
+      trackAnalyticsEvent('photo_spec_export_error', { spec_id: getAnalyticsPhotoSpecId(activePhotoSpec), export_dpi: activePhoto.outputDpi, failure_stage: 'render' })
       setMessage(error instanceof Error ? error.message : '规格照片导出失败')
     } finally {
       setExportingPhotoId(null)
@@ -537,7 +549,7 @@ export function App() {
               <PhotoProcessStep photos={photos} activePhotoId={activePhoto?.id ?? null} mode={mode} isImporting={isImporting} isModelSettingsOpen={isModelSettingsOpen} isModelSwitching={isModelSwitching} currentModelName={currentModel?.name} backgroundRemovalModelId={backgroundRemovalModelId} models={platform.backgroundRemovalModels} modelSwitchProgress={modelSwitchProgress} onImportFiles={(files, inputMethod) => void importFiles(files, inputMethod)} onModeChange={changeLayoutMode} onModelSettingsToggle={() => setIsModelSettingsOpen((current) => !current)} onModelChange={(modelId) => void changeBackgroundRemovalModel(modelId)} onPhotoSelect={setActivePhotoId} onRemovePhoto={removePhoto} onBackgroundChange={(photoId, background) => void changeBackground(photoId, background)} onUpdatePhoto={updatePhoto} onUpdateTuning={updatePhotoTuning} onResetTuning={resetPhotoTuning} onNext={enterCropStep} />
             )}
             {currentStep === 'crop' && (
-              <SpecCropStep photos={photos} activePhoto={activePhoto} mode={mode} zoom={activePhotoZoom} outputPlan={isActivePhotoDpiValid ? photoOutputPlan : null} outputWarning={isActivePhotoDpiValid ? photoExportPixelWarning : '请输入 72–600 的整数 DPI'} outputDpiInput={activePhotoDpiInput} isOutputDpiValid={isActivePhotoDpiValid} isExporting={exportingPhotoId === activePhoto?.id} isModelSwitching={isModelSwitching} onPhotoSelect={setActivePhotoId} onPresetChange={changePhotoPreset} onOutputDpiChange={changePhotoOutputDpi} onZoomChange={changePhotoZoom} onResetCrop={resetPhotoCrop} onExport={() => void exportCurrentPhoto()} onBack={() => changeEditorStep('process')} onNext={enterLayoutStep} />
+              <SpecCropStep photos={photos} customPhotoSpecs={customPhotoSpecs} activePhoto={activePhoto} mode={mode} zoom={activePhotoZoom} outputPlan={isActivePhotoDpiValid ? photoOutputPlan : null} outputWarning={isActivePhotoDpiValid ? photoExportPixelWarning : '请输入 72–600 的整数 DPI'} outputDpiInput={activePhotoDpiInput} isOutputDpiValid={isActivePhotoDpiValid} isExporting={exportingPhotoId === activePhoto?.id} isModelSwitching={isModelSwitching} onPhotoSelect={setActivePhotoId} onSpecChange={changePhotoSpec} onCustomSizeApply={applyCustomPhotoSize} onOutputDpiChange={changePhotoOutputDpi} onZoomChange={changePhotoZoom} onResetCrop={resetPhotoCrop} onExport={() => void exportCurrentPhoto()} onBack={() => changeEditorStep('process')} onNext={enterLayoutStep} />
             )}
             {currentStep === 'layout' && (
               <LayoutStep photos={photos} mode={mode} paperSpecId={paperSpecId} separatorColor={separatorColor} exportDpiInput={exportDpiInput} exportDpi={exportDpi} recommendedExportDpi={recommendedExportDpi} isExportDpiInputValid={isExportDpiInputValid} gapMm={gapMm} countMode={countMode} customCount={customCount} onPaperSpecChange={setPaperSpecId} onSeparatorColorChange={setSeparatorColor} onExportDpiChange={changeExportDpi} onExportDpiBlur={() => setExportDpiInput(String(exportDpi))} onGapChange={setGapMm} onCountModeChange={setCountMode} onCustomCountChange={setCustomCount} onCopiesChange={(photoId, copies) => updatePhoto(photoId, { copies })} onBack={() => changeEditorStep('crop')} />
@@ -556,7 +568,7 @@ export function App() {
               ) : currentStep === 'layout' ? (
                 layout ? <canvas ref={layoutCanvasRef} /> : null
               ) : currentStep === 'crop' && activePhoto ? (
-                <CropCanvas key={`${activePhoto.id}:${activePhoto.presetId}`} ref={photoCanvasRef} crop={activePhoto.crop} sourceSize={{ width: activePhoto.width, height: activePhoto.height }} targetSize={activePhotoSpec!} disabled={Boolean(activePhoto.processingText) || isModelSwitching} onCropChange={(crop) => updatePhoto(activePhoto.id, { crop })} />
+                <CropCanvas key={`${activePhoto.id}:${activePhoto.spec.id}`} ref={photoCanvasRef} crop={activePhoto.crop} sourceSize={{ width: activePhoto.width, height: activePhoto.height }} targetSize={activePhotoSpec!} disabled={Boolean(activePhoto.processingText) || isModelSwitching} onCropChange={(crop) => updatePhoto(activePhoto.id, { crop })} />
               ) : photoOutputPlan ? <canvas ref={photoCanvasRef} /> : null}
             </div>
 
@@ -570,7 +582,7 @@ export function App() {
                 <p className="export-note">导出时才生成高分辨率图片，预览不会消耗大量内存</p>
               </>
             ) : activePhoto && activePhotoSpec ? (
-              <div className="preview-summary photo-preview-summary"><div><span>当前照片</span><strong>{photos.findIndex((photo) => photo.id === activePhoto.id) + 1}<small> / {photos.length}</small></strong></div><div><span>业务规格</span><strong>{activePhotoSpec.name}</strong></div><div><span>当前缩放</span><strong>{Math.round(activePhotoZoom * 100)}<small> %</small></strong></div></div>
+              <div className="preview-summary photo-preview-summary"><div><span>当前照片</span><strong>{photos.findIndex((photo) => photo.id === activePhoto.id) + 1}<small> / {photos.length}</small></strong></div><div><span>业务规格</span><strong>{activePhotoSpec.group === 'custom' ? formatPhotoSpecLabel(activePhotoSpec) : activePhotoSpec.name}</strong></div><div><span>当前缩放</span><strong>{Math.round(activePhotoZoom * 100)}<small> %</small></strong></div></div>
             ) : null}
             {message && <div className="error-message">{message}</div>}
           </section>
@@ -578,7 +590,7 @@ export function App() {
         <SeoDetails />
       </main>
 
-      <footer><span>雨邻证照 · Rainnear Photo</span><span>照片始终仅在浏览器本地处理；页面访问与功能使用数据会发送至 <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google Analytics</a></span></footer>
+      <footer><span>雨邻证照 · Rainnear Photo</span><span>联系邮箱：<a href="mailto:idprint@rainnear.com">idprint@rainnear.com</a></span><span>照片始终仅在浏览器本地处理；页面访问与功能使用数据会发送至 <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google Analytics</a></span></footer>
     </div>
   )
 }

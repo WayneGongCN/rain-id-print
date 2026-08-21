@@ -137,6 +137,29 @@ describe('H5CanvasRenderer background model selection', () => {
     expect(context.strokeRect).not.toHaveBeenCalled()
   })
 
+  it('按非内置比例输出计划限制自定义尺寸预览最大边', async () => {
+    vi.stubGlobal('HTMLImageElement', FakeHtmlImageElement)
+    const store = {
+      get: vi.fn(() => ({ id: 'photo-1', image: new FakeHtmlImageElement() })),
+      getCutout: vi.fn(),
+    }
+    const renderer = new H5CanvasRenderer(store as never)
+    const canvas = createCanvas()
+
+    await renderer.renderPhotoPreview(canvas, {
+      ...PHOTO_PLAN,
+      physicalSize: { width: 30, height: 40 },
+      pixelSize: { width: 354, height: 472 },
+      item: { ...PHOTO_PLAN.item, crop: { x: 0, y: 0, width: 1, height: 1 } },
+    }, {
+      backgroundRemovalModelId: 'fast',
+      previewMaxEdge: 300,
+    })
+
+    expect(canvas.width).toBe(225)
+    expect(canvas.height).toBe(300)
+  })
+
   it('连续刷新裁切框时复用同一抠图结果并保持预览输出尺寸', async () => {
     vi.stubGlobal('HTMLImageElement', FakeHtmlImageElement)
     const cutout = new FakeHtmlImageElement()
@@ -204,7 +227,12 @@ describe('H5CanvasRenderer background model selection', () => {
     vi.stubGlobal('document', { createElement: vi.fn(() => canvas) })
     const renderer = new H5CanvasRenderer(store as never)
 
-    const jpeg = await renderer.exportPhotoJpeg(PHOTO_PLAN, {
+    const jpeg = await renderer.exportPhotoJpeg({
+      ...PHOTO_PLAN,
+      physicalSize: { width: 30, height: 40 },
+      pixelSize: { width: 354, height: 472 },
+      item: { ...PHOTO_PLAN.item, crop: { x: 0, y: 0, width: 1, height: 1 } },
+    }, {
       backgroundRemovalModelId: 'fast',
     })
     const bytes = new Uint8Array(await jpeg.arrayBuffer())

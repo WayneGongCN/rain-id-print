@@ -1,12 +1,14 @@
-import { getPhotoSpec, type LayoutPlan } from '@rainnear/core'
+import type { LayoutPlan } from '@rainnear/core'
 
 export const DEFAULT_EXPORT_DPI = 300
 export const MIN_EXPORT_DPI = 72
 export const MAX_EXPORT_DPI = 600
 export const MAX_H5_EXPORT_PIXELS = 25_000_000
 
-export interface PhotoPresetSelection {
-  presetId: string
+export interface PhotoSpecSelection {
+  spec: {
+    recommendedDpi: number
+  }
 }
 
 /** 返回当前排版模式实际参与输出的照片，喵~ */
@@ -14,14 +16,13 @@ export function getActivePhotoSelections<T>(photos: readonly T[], mode: 'single'
   return mode === 'single' ? photos.slice(0, 1) : photos
 }
 
-/** 读取有效照片预设中的最高建议 DPI，无照片时返回默认值，喵~ */
+/** 读取有效照片规格中的最高建议 DPI，无照片时返回默认值，喵~ */
 export function getRecommendedExportDpi(
-  photos: readonly PhotoPresetSelection[],
+  photos: readonly PhotoSpecSelection[],
   mode: 'single' | 'mixed',
 ): number {
   return getActivePhotoSelections(photos, mode).reduce((maximum, photo) => {
-    const recommendedDpi = getPhotoSpec(photo.presetId)?.recommendedDpi ?? DEFAULT_EXPORT_DPI
-    return Math.max(maximum, recommendedDpi)
+    return Math.max(maximum, photo.spec.recommendedDpi)
   }, DEFAULT_EXPORT_DPI)
 }
 

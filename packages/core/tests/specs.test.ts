@@ -32,4 +32,9 @@ describe('photo specs', () => {
     expect(spec?.notice).toContain('当地人社部门')
     expect(spec?.references?.length).toBeGreaterThan(0)
   })
+
+  it('内置规格查询不包含应用会话创建的自定义规格', () => {
+    expect(getPhotoSpec('custom-30x40-mm')).toBeUndefined()
+    expect(PHOTO_SPECS.some((spec) => spec.group === 'custom')).toBe(false)
+  })
 })

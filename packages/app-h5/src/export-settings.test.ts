@@ -6,16 +6,24 @@ import {
   parseExportDpi,
   raiseExportDpi,
 } from './export-settings'
+import { createCustomPhotoSpec } from './custom-photo-spec'
 
 describe('export settings', () => {
   const photos = [
-    { presetId: 'one-inch' },
-    { presetId: 'resident-id-card' },
+    { spec: { recommendedDpi: 300 } },
+    { spec: { recommendedDpi: 350 } },
   ]
 
   it('单照片模式只读取首张照片，混排模式使用最高建议 DPI', () => {
     expect(getRecommendedExportDpi(photos, 'single')).toBe(300)
     expect(getRecommendedExportDpi(photos, 'mixed')).toBe(350)
+  })
+
+  it('混排时直接读取自定义规格的建议 DPI', () => {
+    expect(getRecommendedExportDpi([
+      { spec: createCustomPhotoSpec(30, 40) },
+      { spec: { recommendedDpi: 350 } },
+    ], 'mixed')).toBe(350)
   })
 
   it('自动提高建议精度但不会自动降低已有设置', () => {

@@ -17,7 +17,7 @@ export interface NormalizedCrop {
 }
 
 /** 用于跨端展示和筛选照片业务规格的稳定分组，喵~ */
-export type PhotoSpecGroup = 'common-size' | 'china-document' | 'visa'
+export type PhotoSpecGroup = 'common-size' | 'china-document' | 'visa' | 'custom'
 
 /** 记录规格数据的原始依据和最近核验时间，喵~ */
 export interface PhotoSpecReference {

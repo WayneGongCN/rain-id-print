@@ -16,7 +16,7 @@ export function createInitialAppPhoto(asset: H5ImageAsset): AppPhoto {
   if (!defaultSpec) throw new Error('缺少默认照片规格')
   return {
     ...asset,
-    presetId: defaultSpec.id,
+    spec: defaultSpec,
     crop: computeCoverCrop({ width: asset.width, height: asset.height }, defaultSpec),
     outputDpi: DEFAULT_EXPORT_DPI,
     copies: 1,
@@ -27,14 +27,12 @@ export function createInitialAppPhoto(asset: H5ImageAsset): AppPhoto {
 }
 
 /** 切换业务规格并保留照片焦点、相对缩放和更高的既有 DPI，喵~ */
-export function retargetAppPhoto(photo: AppPhoto, presetId: string): AppPhoto {
-  const oldSpec = getPhotoSpec(photo.presetId)
-  const spec = getPhotoSpec(presetId)
-  if (!oldSpec || !spec || oldSpec.id === spec?.id) return photo
+export function retargetAppPhoto(photo: AppPhoto, spec: PhotoSpec): AppPhoto {
+  if (photo.spec.id === spec.id) return photo
   return {
     ...photo,
-    presetId,
-    crop: retargetCrop({ width: photo.width, height: photo.height }, oldSpec, spec, photo.crop),
+    spec,
+    crop: retargetCrop({ width: photo.width, height: photo.height }, photo.spec, spec, photo.crop),
     outputDpi: raiseExportDpi(photo.outputDpi, spec.recommendedDpi),
   }
 }

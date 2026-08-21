@@ -1,8 +1,8 @@
-import type { BackgroundMode, BackgroundTuning, NormalizedCrop } from '@rainnear/core'
+import type { BackgroundMode, BackgroundTuning, NormalizedCrop, PhotoSpec } from '@rainnear/core'
 import type { H5ImageAsset } from '@rainnear/plateform-h5'
 
 export interface AppPhoto extends H5ImageAsset {
-  presetId: string
+  spec: PhotoSpec
   crop: NormalizedCrop
   outputDpi: number
   copies: number

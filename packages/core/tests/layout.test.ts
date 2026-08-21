@@ -125,6 +125,19 @@ describe('geometry', () => {
     expect(retargeted.y + retargeted.height / 2).toBeCloseTo(0.55)
   })
 
+  it('切换到任意自定义比例时保持有效裁切与视觉焦点', () => {
+    const source = { width: 1200, height: 1600 }
+    const oldTarget = { width: 25, height: 35 }
+    const customTarget = { width: 30, height: 47 }
+    const crop = createZoomedCrop(source, oldTarget, { x: 0.48, y: 0.52 }, 1.6)
+    const retargeted = retargetCrop(source, oldTarget, customTarget, crop)
+
+    expect(isValidCrop(retargeted, source, customTarget)).toBe(true)
+    expect(getCropZoom(source, customTarget, retargeted)).toBeCloseTo(1.6)
+    expect(retargeted.x + retargeted.width / 2).toBeCloseTo(0.48)
+    expect(retargeted.y + retargeted.height / 2).toBeCloseTo(0.52)
+  })
+
   it('拒绝非法缩放和比例不一致的裁切框', () => {
     expect(() => createZoomedCrop(
       { width: 1200, height: 1600 },
@@ -232,6 +245,19 @@ describe('mixed layout', () => {
     expect(plan.items.find((item) => item.photoId === 'alice')?.crop).toEqual(firstCrop)
     expect(plan.items.find((item) => item.photoId === 'bob')?.crop).toEqual(secondCrop)
   })
+
+  it('自定义照片尺寸超过纸张时返回拒绝结果', () => {
+    const plan = createLayout({
+      mode: 'mixed',
+      paper,
+      photos: [{ ...basePhoto, width: 200, height: 300, copies: 1 }],
+      gapMm: 2,
+      dpi: 300,
+    })
+
+    expect(plan.placedCount).toBe(0)
+    expect(plan.rejected).toEqual([{ photoId: 'alice', count: 1, reason: 'overflow' }])
+  })
 })
 
 describe('photo output', () => {
@@ -257,6 +283,31 @@ describe('photo output', () => {
 
     expect(plan.pixelSize).toEqual({ width: 295, height: 413 })
     expect(plan.item).toEqual({ photoId: 'alice', crop, background: 'white' })
+  })
+
+  it('按自定义毫米尺寸和 DPI 创建单张输出计划', () => {
+    const customSpec = {
+      id: 'custom-30x40-mm',
+      name: '自定义',
+      width: 30,
+      height: 40,
+      category: 'photo' as const,
+      group: 'custom' as const,
+      recommendedDpi: 300,
+    }
+    const crop = computeCoverCrop({ width: 1200, height: 1600 }, customSpec)
+    const plan = createPhotoOutputPlan({
+      photoId: 'alice',
+      sourceWidthPx: 1200,
+      sourceHeightPx: 1600,
+      spec: customSpec,
+      dpi: 300,
+      crop,
+      background: 'keep',
+    })
+
+    expect(plan.physicalSize).toEqual({ width: 30, height: 40 })
+    expect(plan.pixelSize).toEqual({ width: 354, height: 472 })
   })
 
   it('拒绝非法 DPI 和比例错误的裁切', () => {

@@ -5,11 +5,11 @@ export function SeoIntro() {
       <div className="eyebrow">FREE · PRIVATE · PRINT-READY · CUSTOM DPI</div>
       <h1 id="page-title">免费制作规格证件照，<br /><em>免注册隐私优先！</em></h1>
       <div className="intro-copy">
-        <p>一键换底、基础裁切、单张规格照下载与多尺寸冲印排版。无需注册，本地处理照片不上传服务器，隐私留在你的设备。</p>
+        <p>一键换底、预设或自定义毫米尺寸裁切、单张规格照下载与多尺寸冲印排版。无需注册，本地处理照片不上传服务器，隐私留在你的设备。</p>
         <a className="intro-action" href="#editor">开始制作</a>
       </div>
       <div className="feature-row" aria-label="核心能力">
-        <span>本地智能抠图</span><span>规格照裁切导出</span><span>多照片混排</span>
+        <span>本地智能抠图</span><span>自定义毫米尺寸</span><span>多照片混排</span>
       </div>
     </section>
   )
@@ -27,7 +27,7 @@ export function SeoDetails() {
 
       <ol id="how-it-works" className="steps-grid">
         <li><b>01</b><h3>添加并处理照片</h3><p>支持 JPEG、PNG 和 WebP，在本地完成换底和边缘微调。</p></li>
-        <li><b>02</b><h3>选择规格并裁切</h3><p>选择一寸、护照、身份证等业务规格，拖动和缩放后可直接下载单张 JPEG。</p></li>
+        <li><b>02</b><h3>选择规格并裁切</h3><p>选择一寸、护照、身份证等业务规格，或输入自定义毫米尺寸，拖动和缩放后可直接下载单张 JPEG。</p></li>
         <li><b>03</b><h3>纸张排版并导出</h3><p>选择 6 寸（4R）、A4 等纸张，调整数量、间距和精度后生成冲印图。</p></li>
       </ol>
 
@@ -67,6 +67,10 @@ export function SeoDetails() {
           <details>
             <summary>可以只下载裁切后的单张规格照片吗？</summary>
             <p>可以。在“规格与裁切”步骤选择业务规格、调整缩放和位置后即可下载当前照片，无需先完成纸张排版。</p>
+          </details>
+          <details>
+            <summary>预设中没有需要的照片尺寸怎么办？</summary>
+            <p>可以在“规格与裁切”步骤新建 1–500 mm 的整数宽高。自定义尺寸会在本次页面会话中保留，并可供其他已添加照片复用。</p>
           </details>
           <details>
             <summary>证件规格能保证通过官方审核吗？</summary>
