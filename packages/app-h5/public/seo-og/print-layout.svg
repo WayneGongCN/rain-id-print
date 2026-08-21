@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3fbff"/><stop offset="1" stop-color="#dcedfa"/></linearGradient><linearGradient id="accent"><stop stop-color="#5269ef"/><stop offset="1" stop-color="#3746bd"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="url(#bg)"/><circle cx="1090" cy="40" r="210" fill="#fff" opacity=".55"/>
+  <rect x="76" y="74" width="1048" height="482" rx="36" fill="#fff" stroke="#d3e3f3" stroke-width="2"/>
+  <rect x="804" y="126" width="238" height="356" rx="14" fill="#f8fbff" stroke="#5269ef" stroke-width="5"/>
+  <g fill="#c9d6fa" stroke="#6d7fe9" stroke-width="2"><rect x="827" y="150" width="54" height="77" rx="4"/><rect x="895" y="150" width="54" height="77" rx="4"/><rect x="963" y="150" width="54" height="77" rx="4"/><rect x="827" y="239" width="54" height="77" rx="4"/><rect x="895" y="239" width="54" height="77" rx="4"/><rect x="963" y="239" width="54" height="77" rx="4"/><rect x="827" y="328" width="54" height="77" rx="4"/><rect x="895" y="328" width="54" height="77" rx="4"/><rect x="963" y="328" width="54" height="77" rx="4"/></g>
+  <text x="130" y="164" fill="#5269ef" font-size="26" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">雨邻证照 · 自动铺满</text>
+  <text x="130" y="266" fill="#292b3d" font-size="66" font-weight="800" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">证件照 6 寸排版</text>
+  <text x="130" y="344" fill="#596175" font-size="34" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">一寸 12 张 · 二寸 8 张</text>
+  <rect x="130" y="396" width="420" height="70" rx="35" fill="url(#accent)"/><text x="340" y="442" text-anchor="middle" fill="#fff" font-size="28" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">6R 相纸 · 600 DPI</text>
+</svg>

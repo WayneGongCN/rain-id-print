@@ -187,6 +187,29 @@ describe('trackAnalyticsEvent', () => {
     ])
   })
 
+  it('极速漏斗事件只记录页面、规格、输出和耗时字段', () => {
+    const { fakeWindow } = installBrowser()
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true })
+
+    trackAnalyticsEvent('seo_quick_ready', {
+      landing_page: 'print-layout',
+      photo_spec_id: 'one-inch',
+      output_type: 'print-layout',
+      duration_ms: 2468,
+    })
+
+    expect(readDataLayer(fakeWindow).at(-1)).toEqual([
+      'event',
+      'seo_quick_ready',
+      {
+        landing_page: 'print-layout',
+        photo_spec_id: 'one-inch',
+        output_type: 'print-layout',
+        duration_ms: 2468,
+      },
+    ])
+  })
+
   it('GA 未初始化时发送事件不会抛错或创建队列', () => {
     const { fakeWindow } = installBrowser('localhost')
 

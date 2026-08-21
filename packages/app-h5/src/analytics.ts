@@ -1,6 +1,28 @@
 type AnalyticsStorageConsent = 'granted' | 'denied'
 
 interface AnalyticsEventMap {
+  seo_quick_upload: {
+    landing_page: 'one-inch' | 'print-layout' | 'background'
+  }
+  seo_quick_ready: {
+    landing_page: 'one-inch' | 'print-layout' | 'background'
+    photo_spec_id: 'one-inch' | 'two-inch'
+    output_type: 'single-photo' | 'print-layout'
+    duration_ms: number
+  }
+  seo_quick_export: {
+    landing_page: 'one-inch' | 'print-layout' | 'background'
+    photo_spec_id: 'one-inch' | 'two-inch'
+    output_type: 'single-photo' | 'print-layout'
+    background_mode: 'white' | 'blue' | 'red' | 'gray'
+  }
+  seo_quick_error: {
+    landing_page: 'one-inch' | 'print-layout' | 'background'
+    failure_stage: 'bootstrap' | 'import' | 'model' | 'export'
+  }
+  seo_full_editor_open: {
+    landing_page: 'one-inch' | 'print-layout' | 'background'
+  }
   photo_import: {
     input_method: 'picker' | 'drop'
     photo_count: number

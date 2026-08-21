@@ -82,6 +82,15 @@ export function SeoDetails() {
           </details>
         </div>
       </section>
+
+      <nav className="seo-guide-links" aria-labelledby="seo-guide-links-title">
+        <div><span className="seo-card-kicker">QUICK TOOLS</span><h2 id="seo-guide-links-title">按常见需求直接开始</h2><p>极速页面固定高清模型和常用输出参数，上传后即可下载。</p></div>
+        <div>
+          <a href="/one-inch-photo/"><strong>一寸照片在线制作</strong><span>25×35mm · 600 DPI →</span></a>
+          <a href="/id-photo-print-layout/"><strong>证件照 6 寸排版</strong><span>一寸 12 张 · 二寸 8 张 →</span></a>
+          <a href="/id-photo-background/"><strong>证件照在线换底色</strong><span>白、蓝、红、灰底 →</span></a>
+        </div>
+      </nav>
     </section>
   )
 }

@@ -273,6 +273,12 @@ select:focus, input:focus { border-color: #796af1; box-shadow: 0 0 0 3px rgba(12
 .faq-list details:last-child { border-bottom: 0; padding-bottom: 0; }
 .faq-list summary { color: #373446; font-size: 15px; font-weight: 700; cursor: pointer; }
 .faq-list p { margin: 10px 24px 0 0; color: #606575; font-size: 14px; line-height: 1.8; }
+.seo-guide-links { display: grid; grid-template-columns: minmax(240px, .65fr) minmax(440px, 1.35fr); gap: 50px; margin-top: 30px; padding: 42px; border: 1px solid #e1dfed; border-radius: 24px; background: linear-gradient(145deg, #fff, #f7f6ff); box-shadow: 0 20px 55px rgba(39,34,70,.07); }
+.seo-guide-links h2 { margin: 8px 0 10px; font-size: 27px; letter-spacing: -.03em; }
+.seo-guide-links p { margin: 0; color: #6b6e7c; font-size: 12px; line-height: 1.7; }
+.seo-guide-links > div:last-child { display: grid; gap: 10px; }
+.seo-guide-links a { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid #e2dff0; border-radius: 13px; padding: 16px; color: #4d5160; background: #fff; text-decoration: none; }
+.seo-guide-links a span { color: #6252da; font-size: 11px; white-space: nowrap; }
 .static-seo-page .seo-details { margin-top: 28px; }
 
 footer { display: flex; justify-content: space-between; width: min(1460px, calc(100% - 44px)); margin: 0 auto; padding: 22px 0 34px; color: #686c78; font-size: 12px; letter-spacing: .04em; }
@@ -287,6 +293,7 @@ footer a { color: #5848cf; text-underline-offset: 2px; }
   .editor-stepper ol { min-width: 620px; }
   .control-panel { max-height: none; border-right: 0; border-bottom: 1px solid #e8e7ef; }
   .faq-section { grid-template-columns: 1fr; gap: 25px; }
+  .seo-guide-links { grid-template-columns: 1fr; gap: 25px; }
 }
 
 @media (max-width: 600px) {
@@ -334,5 +341,6 @@ footer a { color: #5848cf; text-underline-offset: 2px; }
   .steps-grid, .seo-info-grid { grid-template-columns: 1fr; }
   .steps-grid li, .seo-info-grid article { padding: 21px; }
   .faq-section { margin-top: 48px; padding: 25px 20px; border-radius: 18px; }
+  .seo-guide-links { padding: 25px 20px; border-radius: 18px; }
   footer { width: calc(100% - 28px); flex-direction: column; gap: 6px; }
 }

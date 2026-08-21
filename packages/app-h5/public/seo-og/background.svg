@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff8f4"/><stop offset="1" stop-color="#f0e7ff"/></linearGradient><linearGradient id="accent"><stop stop-color="#7457ec"/><stop offset="1" stop-color="#5639bd"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="url(#bg)"/><circle cx="1090" cy="60" r="210" fill="#fff" opacity=".55"/>
+  <rect x="76" y="74" width="1048" height="482" rx="36" fill="#fff" stroke="#eadff4" stroke-width="2"/>
+  <g><rect x="794" y="154" width="170" height="240" rx="15" fill="#438edb"/><circle cx="879" cy="236" r="43" fill="#f0c9b3"/><path d="M821 373c12-70 43-101 58-101s46 31 58 101" fill="#35314a"/><circle cx="813" cy="452" r="22" fill="#fff" stroke="#ddd"/><circle cx="872" cy="452" r="22" fill="#438edb"/><circle cx="931" cy="452" r="22" fill="#d6453d"/><circle cx="990" cy="452" r="22" fill="#c8c8c8"/></g>
+  <text x="130" y="164" fill="#7256df" font-size="26" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">雨邻证照 · 高清抠图</text>
+  <text x="130" y="266" fill="#2d283c" font-size="66" font-weight="800" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">证件照在线换底色</text>
+  <text x="130" y="344" fill="#625b70" font-size="34" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">白底 · 蓝底 · 红底 · 灰底</text>
+  <rect x="130" y="396" width="400" height="70" rx="35" fill="url(#accent)"/><text x="330" y="442" text-anchor="middle" fill="#fff" font-size="28" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">照片不上传服务器</text>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7f5ff"/><stop offset="1" stop-color="#e7e0ff"/></linearGradient><linearGradient id="accent"><stop stop-color="#755cf6"/><stop offset="1" stop-color="#4e3bc7"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="url(#bg)"/><circle cx="1060" cy="85" r="190" fill="#ffffff" opacity=".5"/><circle cx="60" cy="610" r="220" fill="#d8d0ff" opacity=".6"/>
+  <rect x="76" y="74" width="1048" height="482" rx="36" fill="#fff" stroke="#ddd6ff" stroke-width="2"/>
+  <rect x="820" y="124" width="214" height="300" rx="18" fill="#f4f1ff" stroke="#725df0" stroke-width="6"/><circle cx="927" cy="225" r="53" fill="#d8d0ff"/><path d="M850 394c14-82 53-122 77-122s63 40 77 122" fill="#b4a7f4"/><rect x="850" y="448" width="154" height="34" rx="17" fill="url(#accent)"/>
+  <text x="130" y="164" fill="#6654e8" font-size="26" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">雨邻证照 · 本地处理</text>
+  <text x="130" y="266" fill="#29253d" font-size="66" font-weight="800" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">一寸照片在线制作</text>
+  <text x="130" y="344" fill="#5d5872" font-size="34" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">25 × 35 mm · 591 × 827 px</text>
+  <rect x="130" y="396" width="390" height="70" rx="35" fill="url(#accent)"/><text x="325" y="442" text-anchor="middle" fill="#fff" font-size="28" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif">600 DPI · 高清白底</text>
+</svg>
