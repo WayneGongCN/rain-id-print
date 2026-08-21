@@ -118,6 +118,44 @@ export function createZoomedCrop(
   })
 }
 
+/** 围绕裁切视口中的指定锚点修改缩放，并保持锚点对应的源图位置稳定，喵~ */
+export function zoomCropAtPoint(
+  source: SizeMm,
+  target: SizeMm,
+  crop: NormalizedCrop,
+  zoom: number,
+  anchor: NormalizedPoint,
+): NormalizedCrop {
+  assertPositiveSize(source, '源图')
+  assertPositiveSize(target, '目标')
+  if (!Number.isFinite(zoom) || zoom < 1 || zoom > MAX_CROP_ZOOM) {
+    throw new RangeError(`裁切缩放必须在 1–${MAX_CROP_ZOOM} 之间`)
+  }
+  if (
+    !Number.isFinite(anchor.x)
+    || !Number.isFinite(anchor.y)
+    || anchor.x < 0
+    || anchor.x > 1
+    || anchor.y < 0
+    || anchor.y > 1
+  ) {
+    throw new RangeError('缩放锚点必须位于裁切视口内')
+  }
+
+  const normalized = normalizeAndValidateCrop(crop, source, target)
+  const base = computeCoverCrop(source, target)
+  const width = base.width / zoom
+  const height = base.height / zoom
+  const sourceAnchorX = normalized.x + normalized.width * anchor.x
+  const sourceAnchorY = normalized.y + normalized.height * anchor.y
+  return normalizeCrop({
+    x: sourceAnchorX - width * anchor.x,
+    y: sourceAnchorY - height * anchor.y,
+    width,
+    height,
+  })
+}
+
 /** 从裁切框反推出相对于居中 cover 的缩放倍数，喵~ */
 export function getCropZoom(source: SizeMm, target: SizeMm, crop: NormalizedCrop): number {
   const normalized = normalizeAndValidateCrop(crop, source, target)

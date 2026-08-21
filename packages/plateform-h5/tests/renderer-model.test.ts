@@ -137,6 +137,45 @@ describe('H5CanvasRenderer background model selection', () => {
     expect(context.strokeRect).not.toHaveBeenCalled()
   })
 
+  it('连续刷新裁切框时复用同一抠图结果并保持预览输出尺寸', async () => {
+    vi.stubGlobal('HTMLImageElement', FakeHtmlImageElement)
+    const cutout = new FakeHtmlImageElement()
+    const getCutout = vi.fn(() => ({
+      image: cutout,
+      objectUrl: 'blob:fast',
+      refinedCutouts: new Map(),
+      lastAccess: 1,
+    }))
+    const store = {
+      get: vi.fn(() => ({ id: 'photo-1', image: new FakeHtmlImageElement() })),
+      getCutout,
+    }
+    const renderer = new H5CanvasRenderer(store as never)
+    const canvas = createCanvas()
+    const context = canvas.getContext('2d') as unknown as {
+      drawImage: ReturnType<typeof vi.fn>
+      fillRect: ReturnType<typeof vi.fn>
+    }
+
+    await renderer.renderPhotoPreview(canvas, {
+      ...PHOTO_PLAN,
+      item: { ...PHOTO_PLAN.item, background: 'white', crop: { x: 0, y: 0, width: 1, height: 1 } },
+    }, { backgroundRemovalModelId: 'fast', previewMaxEdge: 300 })
+    await renderer.renderPhotoPreview(canvas, {
+      ...PHOTO_PLAN,
+      item: { ...PHOTO_PLAN.item, background: 'white', crop: { x: 0.2, y: 0.25, width: 0.5, height: 0.5 } },
+    }, { backgroundRemovalModelId: 'fast', previewMaxEdge: 300 })
+
+    expect(getCutout).toHaveBeenCalledTimes(2)
+    expect(getCutout).toHaveBeenNthCalledWith(1, 'photo-1', 'fast')
+    expect(getCutout).toHaveBeenNthCalledWith(2, 'photo-1', 'fast')
+    expect(context.drawImage).toHaveBeenNthCalledWith(1, cutout, 0, 0, 600, 800, 0, 0, 214, 300)
+    expect(context.drawImage).toHaveBeenNthCalledWith(2, cutout, 120, 200, 300, 400, 0, 0, 214, 300)
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 214, 300)
+    expect(canvas.width).toBe(214)
+    expect(canvas.height).toBe(300)
+  })
+
   it('在创建单张高分辨率画布前阻止超限导出', async () => {
     vi.stubGlobal('HTMLImageElement', FakeHtmlImageElement)
     const renderer = new H5CanvasRenderer({} as never)

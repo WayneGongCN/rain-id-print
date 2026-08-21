@@ -81,7 +81,7 @@ export function SpecCropStep(props: SpecCropStepProps) {
           <label className="range-field crop-zoom-field"><span>缩放 <b>{Math.round(props.zoom * 100)}%</b></span><input type="range" min="100" max="400" step="1" value={Math.round(props.zoom * 100)} onChange={(event) => props.onZoomChange(props.activePhoto!.id, Number(event.target.value) / 100)} /></label>
           <div className="crop-actions">
             <button type="button" onClick={() => props.onResetCrop(props.activePhoto!.id)}>恢复居中</button>
-            <small>可在右侧预览中直接拖动照片调整位置</small>
+            <small>可在右侧预览中拖动移动，滚轮或双指缩放</small>
           </div>
 
           {props.outputWarning && <div className="error-message">{props.outputWarning}</div>}

@@ -5,12 +5,12 @@ import {
   computeCoverCrop,
   createLayout,
   createPhotoOutputPlan,
-  createZoomedCrop,
   getCropZoom,
   getPaperSpec,
   getPhotoSpec,
   isValidCrop,
   normalizeBackgroundTuning,
+  zoomCropAtPoint,
   type BackgroundMode,
   type BackgroundTuning,
   type LayoutPlan,
@@ -183,13 +183,18 @@ export function App() {
   useEffect(() => {
     const canvas = photoCanvasRef.current
     if (!canvas || !photoOutputPlan || currentStep === 'layout' || !activePhoto) return
-    const timer = window.setTimeout(() => {
+    const render = () => {
       platform.renderPhotoPreview(canvas, photoOutputPlan, {
         backgroundRemovalModelId,
         previewMaxEdge: 1200,
         backgroundTuning: activePhoto.tuning,
       }).catch((error: unknown) => setMessage(error instanceof Error ? error.message : '规格照片预览失败'))
-    }, currentStep === 'crop' ? 32 : 80)
+    }
+    if (currentStep === 'crop') {
+      const frame = window.requestAnimationFrame(render)
+      return () => window.cancelAnimationFrame(frame)
+    }
+    const timer = window.setTimeout(render, 80)
     return () => window.clearTimeout(timer)
   }, [activePhoto, backgroundRemovalModelId, currentStep, photoOutputPlan, platform])
 
@@ -386,11 +391,12 @@ export function App() {
     const spec = photo ? getPhotoSpec(photo.presetId) : undefined
     if (!photo || !spec) return
     updatePhoto(photoId, {
-      crop: createZoomedCrop(
+      crop: zoomCropAtPoint(
         { width: photo.width, height: photo.height },
         spec,
-        { x: photo.crop.x + photo.crop.width / 2, y: photo.crop.y + photo.crop.height / 2 },
+        photo.crop,
         zoom,
+        { x: 0.5, y: 0.5 },
       ),
     })
   }
@@ -550,7 +556,7 @@ export function App() {
               ) : currentStep === 'layout' ? (
                 layout ? <canvas ref={layoutCanvasRef} /> : null
               ) : currentStep === 'crop' && activePhoto ? (
-                <CropCanvas ref={photoCanvasRef} crop={activePhoto.crop} disabled={Boolean(activePhoto.processingText) || isModelSwitching} onCropChange={(crop) => updatePhoto(activePhoto.id, { crop })} />
+                <CropCanvas key={`${activePhoto.id}:${activePhoto.presetId}`} ref={photoCanvasRef} crop={activePhoto.crop} sourceSize={{ width: activePhoto.width, height: activePhoto.height }} targetSize={activePhotoSpec!} disabled={Boolean(activePhoto.processingText) || isModelSwitching} onCropChange={(crop) => updatePhoto(activePhoto.id, { crop })} />
               ) : photoOutputPlan ? <canvas ref={photoCanvasRef} /> : null}
             </div>
 

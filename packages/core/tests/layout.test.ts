@@ -5,9 +5,11 @@ import {
   createPhotoOutputPlan,
   createZoomedCrop,
   getCropZoom,
+  isValidCrop,
   mmToPixels,
   retargetCrop,
   translateCrop,
+  zoomCropAtPoint,
   type LayoutRequest,
 } from '../src'
 
@@ -57,6 +59,58 @@ describe('geometry', () => {
 
     expect(getCropZoom(source, target, crop)).toBeCloseTo(2)
     expect(translateCrop(crop, -10, 10)).toMatchObject({ x: 0, y: 1 - crop.height })
+  })
+
+  it('使用视口锚点缩放时保持对应的源图位置', () => {
+    const source = { width: 1200, height: 1600 }
+    const target = { width: 25, height: 35 }
+    const crop = createZoomedCrop(source, target, { x: 0.45, y: 0.55 }, 1.5)
+    const anchors = [{ x: 0, y: 0 }, { x: 0.5, y: 0.5 }, { x: 0.3, y: 0.7 }]
+
+    anchors.forEach((anchor) => {
+      const expectedSourcePoint = {
+        x: crop.x + crop.width * anchor.x,
+        y: crop.y + crop.height * anchor.y,
+      }
+      const zoomed = zoomCropAtPoint(source, target, crop, 2.5, anchor)
+
+      expect(zoomed.x + zoomed.width * anchor.x).toBeCloseTo(expectedSourcePoint.x)
+      expect(zoomed.y + zoomed.height * anchor.y).toBeCloseTo(expectedSourcePoint.y)
+      expect(getCropZoom(source, target, zoomed)).toBeCloseTo(2.5)
+    })
+  })
+
+  it('使用视口中心缩放时与现有焦点缩放结果一致', () => {
+    const source = { width: 1200, height: 1600 }
+    const target = { width: 25, height: 35 }
+    const crop = createZoomedCrop(source, target, { x: 0.45, y: 0.55 }, 1.5)
+    const focus = { x: crop.x + crop.width / 2, y: crop.y + crop.height / 2 }
+
+    expect(zoomCropAtPoint(source, target, crop, 3, { x: 0.5, y: 0.5 })).toEqual(
+      createZoomedCrop(source, target, focus, 3),
+    )
+  })
+
+  it('锚点缩放时遵守图片边界和缩放边界', () => {
+    const source = { width: 1200, height: 1600 }
+    const target = { width: 25, height: 35 }
+    const edgeCrop = createZoomedCrop(source, target, { x: 0, y: 0 }, 2)
+
+    const zoomedOut = zoomCropAtPoint(source, target, edgeCrop, 1, { x: 1, y: 1 })
+    expect(getCropZoom(source, target, zoomedOut)).toBeCloseTo(1)
+    expect(isValidCrop(zoomedOut, source, target)).toBe(true)
+    expect(zoomedOut.x).toBe(0)
+    expect(getCropZoom(source, target, zoomCropAtPoint(source, target, edgeCrop, 4, { x: 0, y: 0 }))).toBeCloseTo(4)
+  })
+
+  it('拒绝非法的锚点缩放参数', () => {
+    const source = { width: 1200, height: 1600 }
+    const target = { width: 25, height: 35 }
+    const crop = computeCoverCrop(source, target)
+
+    expect(() => zoomCropAtPoint(source, target, crop, 0.9, { x: 0.5, y: 0.5 })).toThrow('1–4')
+    expect(() => zoomCropAtPoint(source, target, crop, 2, { x: -0.1, y: 0.5 })).toThrow('锚点')
+    expect(() => zoomCropAtPoint({ width: 0, height: 1 }, target, crop, 2, { x: 0.5, y: 0.5 })).toThrow('源图')
   })
 
   it('切换目标规格时保留焦点和相对缩放', () => {
