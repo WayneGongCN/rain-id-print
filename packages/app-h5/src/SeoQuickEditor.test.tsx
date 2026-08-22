@@ -55,6 +55,30 @@ afterEach(() => {
 })
 
 describe('SeoQuickEditor', () => {
+  it('6 寸排版上传后直接使用原图，不加载抠图模型', async () => {
+    const platform = createPlatformMock()
+    platformModule.createH5Platform.mockReturnValue(platform)
+    render(<SeoQuickEditor flowId="print-layout" initialFile={new File(['a'], 'layout.jpg', { type: 'image/jpeg' })} />)
+
+    await screen.findByText('排版已生成，可以直接下载')
+    expect(platform.prepareCutout).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('照片底色')).toBeNull()
+    expect(platform.renderPreview).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      new Map([['layout.jpg', 'keep']]),
+      expect.anything(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /下载 12 张一寸照排版图/ }))
+    await waitFor(() => expect(platform.exportJpeg).toHaveBeenCalledWith(
+      expect.anything(),
+      new Map([['layout.jpg', 'keep']]),
+      expect.anything(),
+    ))
+    expect(platform.prepareCutout).not.toHaveBeenCalled()
+  })
+
   it('上传后立即调用 quality，切换底色不重复抠图', async () => {
     const platform = createPlatformMock()
     platformModule.createH5Platform.mockReturnValue(platform)

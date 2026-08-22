@@ -14,7 +14,7 @@ interface AnalyticsEventMap {
     landing_page: 'one-inch' | 'print-layout' | 'background'
     photo_spec_id: 'one-inch' | 'two-inch'
     output_type: 'single-photo' | 'print-layout'
-    background_mode: 'white' | 'blue' | 'red' | 'gray'
+    background_mode: 'keep' | 'white' | 'blue' | 'red' | 'gray'
   }
   seo_quick_error: {
     landing_page: 'one-inch' | 'print-layout' | 'background'

@@ -36,17 +36,18 @@ describe('SEO 极速业务计划', () => {
   })
 
   it('6 寸相纸默认排入 12 张一寸照并固定 2mm 间距', () => {
-    const photo = { ...createSeoQuickPhoto(asset, 'one-inch'), background: 'white' as const }
+    const photo = createSeoQuickPhoto(asset, 'one-inch')
     const layout = createSeoQuickLayout(photo, getPrintFlow())
 
     expect(layout.dpi).toBe(600)
     expect(layout.gapMm).toBe(2)
     expect(layout.pixelSize).toEqual({ width: 2409, height: 3591 })
     expect(layout.placedCount).toBe(12)
+    expect(layout.items.every((item) => item.background === 'keep')).toBe(true)
   })
 
   it('切换二寸后复用同一排版算法并自动排入 8 张', () => {
-    const oneInch = { ...createSeoQuickPhoto(asset, 'one-inch'), background: 'white' as const }
+    const oneInch = createSeoQuickPhoto(asset, 'one-inch')
     const twoInch = retargetSeoQuickPhoto(oneInch, 'two-inch')
     const layout = createSeoQuickLayout(twoInch, getPrintFlow())
 

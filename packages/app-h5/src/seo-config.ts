@@ -17,8 +17,8 @@ export interface SeoQuickFlowDefinition {
   outputType: SeoQuickOutputType
   allowedPhotoSpecIds: readonly SeoQuickPhotoSpecId[]
   defaultPhotoSpecId: 'one-inch'
-  defaultBackground: Extract<BackgroundMode, 'white'>
-  backgroundRemovalModelId: 'quality'
+  defaultBackground: Extract<BackgroundMode, 'keep' | 'white'>
+  backgroundRemovalModelId?: 'quality'
   dpi: 600
   paperSpecId?: '6r'
   gapMm?: 2
@@ -55,8 +55,7 @@ export const SEO_QUICK_FLOW_DEFINITIONS: readonly SeoQuickFlowDefinition[] = [
     outputType: 'print-layout',
     allowedPhotoSpecIds: ['one-inch', 'two-inch'],
     defaultPhotoSpecId: 'one-inch',
-    defaultBackground: 'white',
-    backgroundRemovalModelId: 'quality',
+    defaultBackground: 'keep',
     dpi: 600,
     paperSpecId: '6r',
     gapMm: 2,

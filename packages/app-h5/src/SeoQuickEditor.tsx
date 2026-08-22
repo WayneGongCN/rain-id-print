@@ -57,6 +57,7 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
   const [progressText, setProgressText] = useState('正在读取照片…')
   const [errorMessage, setErrorMessage] = useState('')
   const [isExporting, setIsExporting] = useState(false)
+  const renderModelId = flow.backgroundRemovalModelId ?? platform.defaultBackgroundRemovalModelId
 
   const photoPlan = useMemo(() => photo ? createSeoQuickPhotoPlan(photo) : null, [photo])
   const layout = useMemo(() => photo && flow.outputType === 'print-layout' ? createSeoQuickLayout(photo, flow) : null, [flow, photo])
@@ -71,6 +72,7 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
 
   /** 为已经导入的平台资源启动固定高清模型，喵~ */
   async function prepareQualityCutout(assetId: string, taskVersion: number): Promise<void> {
+    if (!flow.backgroundRemovalModelId) return
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -111,6 +113,7 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
   /** 读取一张新照片并替换当前任务和资源，喵~ */
   async function importAndProcess(file: File): Promise<void> {
     const taskVersion = ++taskVersionRef.current
+    processingStartedAtRef.current = performance.now()
     abortRef.current?.abort()
     abortRef.current = null
     const previousAssetId = activeAssetIdRef.current
@@ -129,9 +132,23 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
       }
       activeAssetIdRef.current = asset.id
       const nextPhoto = createSeoQuickPhoto(asset, flow.defaultPhotoSpecId)
-      setPhoto(nextPhoto)
+      setPhoto({
+        ...nextPhoto,
+        background: flow.backgroundRemovalModelId ? 'keep' : flow.defaultBackground,
+      })
       trackAnalyticsEvent('seo_quick_upload', { landing_page: flow.id })
-      await prepareQualityCutout(asset.id, taskVersion)
+      if (flow.backgroundRemovalModelId) {
+        await prepareQualityCutout(asset.id, taskVersion)
+      } else {
+        setStatus('ready')
+        setProgressText('排版已生成，可以直接下载')
+        trackAnalyticsEvent('seo_quick_ready', {
+          landing_page: flow.id,
+          photo_spec_id: flow.defaultPhotoSpecId,
+          output_type: flow.outputType,
+          duration_ms: Math.max(0, Math.round(performance.now() - processingStartedAtRef.current)),
+        })
+      }
     } catch (error) {
       if (taskVersionRef.current !== taskVersion) return
       setStatus('model-error')
@@ -156,13 +173,13 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
     const canvas = photoCanvasRef.current
     if (!canvas || !photoPlan) return
     platform.renderPhotoPreview(canvas, photoPlan, {
-      backgroundRemovalModelId: flow.backgroundRemovalModelId,
+      backgroundRemovalModelId: renderModelId,
       previewMaxEdge: 1000,
       backgroundTuning: DEFAULT_BACKGROUND_TUNING,
     }).catch((error: unknown) => {
       if (status === 'ready') setErrorMessage(error instanceof Error ? error.message : '预览生成失败')
     })
-  }, [flow.backgroundRemovalModelId, photoPlan, platform, status])
+  }, [photoPlan, platform, renderModelId, status])
 
   // 排版页在同屏同步展示固定 6 寸结果，喵~
   useEffect(() => {
@@ -170,13 +187,13 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
     if (!canvas || !layout || !photo) return
     platform.renderPreview(canvas, layout, new Map([[photo.id, photo.background]]), {
       separatorColor: SEO_QUICK_SEPARATOR_COLOR,
-      backgroundRemovalModelId: flow.backgroundRemovalModelId,
+      backgroundRemovalModelId: renderModelId,
       previewMaxEdge: 1200,
       backgroundTunings: new Map([[photo.id, DEFAULT_BACKGROUND_TUNING]]),
     }).catch((error: unknown) => {
       if (status === 'ready') setErrorMessage(error instanceof Error ? error.message : '排版预览失败')
     })
-  }, [flow.backgroundRemovalModelId, layout, photo, platform, status])
+  }, [layout, photo, platform, renderModelId, status])
 
   /** 替换照片时允许用户再次选择同名文件，喵~ */
   function handleReplaceFile(event: ChangeEvent<HTMLInputElement>): void {
@@ -207,14 +224,14 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
         if (!layout) throw new Error('排版结果尚未准备完成')
         const blob = await platform.exportJpeg(layout, new Map([[photo.id, photo.background]]), {
           separatorColor: SEO_QUICK_SEPARATOR_COLOR,
-          backgroundRemovalModelId: flow.backgroundRemovalModelId,
+          backgroundRemovalModelId: renderModelId,
           backgroundTunings: new Map([[photo.id, DEFAULT_BACKGROUND_TUNING]]),
           maxExportPixels: MAX_H5_EXPORT_PIXELS,
         })
         platform.download(blob, `rainnear_6寸_${layout.placedCount}张${photo.spec.name}_${flow.dpi}dpi.jpg`)
       } else {
         const blob = await platform.exportPhotoJpeg(photoPlan, {
-          backgroundRemovalModelId: flow.backgroundRemovalModelId,
+          backgroundRemovalModelId: renderModelId,
           backgroundTuning: DEFAULT_BACKGROUND_TUNING,
           maxExportPixels: MAX_H5_EXPORT_PIXELS,
         })
@@ -224,7 +241,7 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
         landing_page: flow.id,
         photo_spec_id: photo.spec.id === 'two-inch' ? 'two-inch' : 'one-inch',
         output_type: flow.outputType,
-        background_mode: photo.background === 'keep' ? 'white' : photo.background,
+        background_mode: photo.background,
       })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '导出失败，请重试')
@@ -269,12 +286,12 @@ export function SeoQuickEditor({ flowId, initialFile }: SeoQuickEditorProps) {
           {flow.allowedPhotoSpecIds.length > 1 && (
             <div className="quick-spec-tabs" aria-label="照片规格">{flow.allowedPhotoSpecIds.map((specId) => <button key={specId} type="button" className={photo.spec.id === specId ? 'selected' : ''} onClick={() => changePhotoSpec(specId)}>{specId === 'one-inch' ? '一寸' : '二寸'}</button>)}</div>
           )}
-          <div className="quick-backgrounds" aria-label="照片底色">{BACKGROUND_OPTIONS.map((option) => <button key={option.value} type="button" className={photo.background === option.value ? 'selected' : ''} aria-label={option.label} aria-pressed={photo.background === option.value} onClick={() => changeBackground(option.value)}><i style={{ background: option.color }} /><span>{option.label}</span></button>)}</div>
+          {flow.backgroundRemovalModelId && <div className="quick-backgrounds" aria-label="照片底色">{BACKGROUND_OPTIONS.map((option) => <button key={option.value} type="button" className={photo.background === option.value ? 'selected' : ''} aria-label={option.label} aria-pressed={photo.background === option.value} onClick={() => changeBackground(option.value)}><i style={{ background: option.color }} /><span>{option.label}</span></button>)}</div>}
           <div className="quick-readonly-summary"><span>{photo.spec.width}×{photo.spec.height} mm</span><span>{flow.outputType === 'print-layout' ? '6 寸相纸' : `${photoPlan?.pixelSize.width}×${photoPlan?.pixelSize.height} px`}</span><span>{flow.dpi} DPI</span><span>缩放 {Math.round(zoom * 100)}%</span></div>
         </div>
       )}
 
-      {errorMessage && <div className="quick-error" role="alert"><strong>{errorMessage}</strong>{status === 'model-error' && photo && <button type="button" onClick={() => void prepareQualityCutout(photo.id, ++taskVersionRef.current)}>重试高清处理</button>}<button type="button" onClick={() => replaceInputRef.current?.click()}>重新选择照片</button><a data-full-editor-link href="/#editor">进入完整工具</a></div>}
+      {errorMessage && <div className="quick-error" role="alert"><strong>{errorMessage}</strong>{status === 'model-error' && photo && flow.backgroundRemovalModelId && <button type="button" onClick={() => void prepareQualityCutout(photo.id, ++taskVersionRef.current)}>重试高清处理</button>}<button type="button" onClick={() => replaceInputRef.current?.click()}>重新选择照片</button><a data-full-editor-link href="/#editor">进入完整工具</a></div>}
 
       <button className="quick-download" type="button" disabled={!photo || status !== 'ready' || isExporting} onClick={() => void exportResult()}>{isExporting ? '正在生成高清图片…' : downloadLabel}<b>↓</b></button>
       <p className="quick-footer-note">照片和处理结果不会上传服务器 · 需要更多设置？<a data-full-editor-link href="/#editor">进入完整工具</a></p>
